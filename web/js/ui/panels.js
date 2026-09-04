@@ -40,7 +40,6 @@ import { STANDARDS } from '../rf/calibration.js';
 import { READOUT_TYPES } from '../app/markers.js';
 import { ANALYSES, AnalysisError, Context, runAnalysis } from '../rf/analysis.js';
 import { CABLE_PARAMETERS, FORMATS as TDR_FORMATS, WINDOWS as TDR_WINDOWS } from '../rf/tdr.js';
-import { CHART_TYPES } from '../charts/registry.js';
 import { BAND_REGIONS } from '../app/bands.js';
 import { serialSupported, serialUnsupportedReason } from '../device/transport.js';
 
@@ -625,30 +624,6 @@ function safeName(name) {
 // ------------------------------------------------------------ display
 
 export function displayPanel(state, chartGrid) {
-  const chartPickers = el('div.chart-pickers');
-
-  const renderPickers = () => {
-    clear(chartPickers);
-    state.settings.layout.forEach((key, slot) => {
-      chartPickers.append(
-        field(
-          `Chart ${slot + 1}`,
-          select(
-            CHART_TYPES.map((t) => [t.key, `${t.group}: ${t.name}`]),
-            key,
-            (event) => {
-              const layout = [...state.settings.layout];
-              layout[slot] = event.target.value;
-              state.updateSettings({ layout });
-              chartGrid.rebuild();
-              renderPickers();
-            },
-          ),
-        ),
-      );
-    });
-  };
-
   const node = panel(
     'Display',
     field(
@@ -659,27 +634,17 @@ export function displayPanel(state, chartGrid) {
         (event) => state.updateSettings({ theme: event.target.value }),
       ),
     ),
-    field(
-      'Charts',
-      select(
-        [1, 2, 3, 4, 6, 8, 9, 12].map((v) => [v, String(v)]),
-        state.settings.layout.length,
-        (event) => {
-          const count = Number(event.target.value);
-          const layout = [...state.settings.layout];
-          while (layout.length < count) layout.push(CHART_TYPES[layout.length % CHART_TYPES.length].key);
-          layout.length = count;
-          state.updateSettings({ layout });
-          chartGrid.rebuild();
-          renderPickers();
-        },
-      ),
+    el(
+      'p.field-hint',
+      {},
+      'Add, remove, resize and rearrange panels directly in the chart grid above.',
     ),
     field(
       'Columns',
       select([1, 2, 3, 4].map((v) => [v, String(v)]), state.settings.columns, (event) => {
         state.updateSettings({ columns: Number(event.target.value) });
-        chartGrid.applyColumns();
+        // a narrower grid may have re-clamped some panels' colSpan
+        chartGrid.rebuild();
       }),
     ),
     checkbox('Draw lines between points', state.settings.drawLines, (event) => {
@@ -717,10 +682,8 @@ export function displayPanel(state, chartGrid) {
         chartGrid.applyBands();
       }),
     ),
-    chartPickers,
   );
 
-  renderPickers();
   return node;
 }
 

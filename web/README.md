@@ -42,9 +42,15 @@ unavailable. The application says so rather than failing silently.
    **Averaged**.
 3. Drag on a chart to zoom into a span; double click to zoom back out.
    Drag a marker, or click a chart, to move the nearest marker.
+4. The chart grid is a Grafana-style dashboard: drag a panel by its
+   header to reorder it, drag its bottom-right corner to resize it across
+   columns and rows, and use its **⚙** button to add, remove or rearrange
+   the chart types it overlays and to lock an axis to a fixed range
+   instead of autoscaling. **+ Add panel** adds a new one.
 
-Settings, the sweep and the chart layout are remembered in the browser's
-local storage.
+Settings, the sweep and the chart layout — including each panel's size,
+position, combined chart types and axis limits — are remembered in the
+browser's local storage.
 
 ## What is supported
 
@@ -71,6 +77,15 @@ Smith chart, S21 gain, phase, polar, |Z| and R+jX in shunt and series
 form, the combined S11/S21 log magnitude chart, and TDR. Reference traces
 and amateur band overlays draw on all of them.
 
+**Chart grid.** A Grafana-style dashboard: panels can span multiple grid
+columns and rows, be dragged into a new order, and combine any number of
+chart types in one panel. Frequency-axis chart types (return loss, VSWR,
+phase, gain, R+jX, and so on) overlay as multiple traces on shared or
+independent left/right Y axes with a legend; Smith, Polar and TDR each
+draw as their own mini-chart alongside the others in the same panel. Any
+axis can be locked to a fixed range (handy for keeping VSWR from
+autoscaling out to a decade) or left on autoscale.
+
 **Markers.** Any number of markers, each with the full readout table —
 impedance, admittance, series and parallel equivalents, VSWR, return
 loss, Q, group delay and the S21 readouts.
@@ -94,7 +109,8 @@ web/
     charts/           the chart engine and the chart catalogue
     device/           Web Serial transport, drivers, device detection
     rf/               RF maths, Touchstone, calibration, analyses, TDR
-    ui/               DOM helpers, the sidebar panels and the chart grid
+    ui/               DOM helpers, the sidebar panels, the chart grid
+                      and its drag-to-reorder/drag-to-resize interactions
   tests/              the test suite, run under node
 ```
 
