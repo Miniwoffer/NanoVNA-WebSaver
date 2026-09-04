@@ -21,11 +21,14 @@
 // The Smith and polar charts, which plot the reflection coefficient on
 // the unit circle rather than against frequency.
 
-import { Chart } from './base.js';
+import { Chart, colorForTrace } from './base.js';
 
 /** The constant resistance and reactance circles a Smith chart shows. */
 const RESISTANCE_CIRCLES = [0.2, 0.5, 1, 2, 5];
 const REACTANCE_ARCS = [0.2, 0.5, 1, 2, 5];
+
+/** Height reserved above the plot for the combined-panel legend. */
+const LEGEND_HEIGHT = 16;
 
 export class PolarChart extends Chart {
   constructor(definition) {
@@ -33,6 +36,18 @@ export class PolarChart extends Chart {
     this.series = definition.series;
     /** rings drawn at these radii, as a fraction of the unit circle */
     this.rings = definition.rings ?? [0.25, 0.5, 0.75, 1];
+    this._legendHeight = 0;
+  }
+
+  /** Shrinks the plot area by the legend strip while one is showing. */
+  get plot() {
+    const base = super.plot;
+    if (!this._legendHeight) return base;
+    return {
+      ...base,
+      top: base.top + this._legendHeight,
+      height: base.height - this._legendHeight,
+    };
   }
 
   /** Centre and radius of the unit circle within the plot area. */
@@ -63,9 +78,38 @@ export class PolarChart extends Chart {
   }
 
   drawChart(ctx) {
+    const traces = this.traces();
+    const legendItems = this.#legendItems(traces);
+    this._legendHeight = legendItems.length ? LEGEND_HEIGHT : 0;
+
     this.drawGrid(ctx);
-    for (const trace of this.traces()) this.#drawTrace(ctx, trace);
+    for (const trace of traces) this.#drawTrace(ctx, trace);
     this.#drawMarkers(ctx);
+
+    if (legendItems.length) {
+      const basePlot = super.plot;
+      this.drawLegend(ctx, legendItems, basePlot.left, basePlot.top, basePlot.width);
+    }
+  }
+
+  /**
+   * Labels for the legend, one per distinct live trace.
+   *
+   * As in `FrequencyChart`, only shown once a panel actually combines
+   * more than one layer -- signalled by a trace carrying `paletteIndex`
+   * -- so a single-chart-type Smith or Polar panel keeps rendering
+   * exactly as it always has, with no legend.
+   */
+  #legendItems(traces) {
+    if (!traces.some((t) => t.paletteIndex !== undefined)) return [];
+    const seen = new Set();
+    const items = [];
+    for (const trace of traces) {
+      if (trace.isReference || seen.has(trace.label)) continue;
+      seen.add(trace.label);
+      items.push({ label: trace.label, color: colorForTrace(this.theme, trace) });
+    }
+    return items;
   }
 
   drawGrid(ctx) {
@@ -95,9 +139,10 @@ export class PolarChart extends Chart {
   #drawTrace(ctx, trace) {
     const { data } = trace;
     ctx.save();
-    ctx.strokeStyle = trace.isReference ? this.theme.reference : this.theme.sweep;
+    ctx.strokeStyle = colorForTrace(this.theme, trace);
     ctx.fillStyle = ctx.strokeStyle;
     ctx.lineWidth = this.lineWidth;
+    if (trace.isReference && trace.paletteIndex !== undefined) ctx.globalAlpha = 0.55;
     ctx.beginPath();
     let started = false;
     for (const dp of data) {

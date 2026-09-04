@@ -29,7 +29,7 @@ import { corrAttData } from '../rf/rftools.js';
 import { SweepWorker } from './sweepworker.js';
 import { DEFAULT_BANDS, DEFAULT_REGION, BAND_REGIONS } from './bands.js';
 import { DEFAULT_READOUTS, createMarker, nearestIndex, readoutsAt } from './markers.js';
-import { DEFAULT_LAYOUT } from '../charts/registry.js';
+import { clampLayoutToColumns, defaultLayout, normalizeLayout } from '../charts/registry.js';
 import { connectDevice, describePort, grantedPorts, requestPort } from '../device/detect.js';
 
 const STORAGE_KEY = 'nanovna-websaver.settings.v1';
@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS = {
   bandsEnabled: false,
   bandRegion: DEFAULT_REGION,
   readouts: [...DEFAULT_READOUTS],
-  layout: [...DEFAULT_LAYOUT],
+  layout: defaultLayout(),
   columns: 3,
   tdr: { velocityFactor: 0.66, format: '|Z| (lowpass)', window: 'kaiser6' },
 };
@@ -79,6 +79,10 @@ export class AppState extends Emitter {
       if (!stored) return;
       const parsed = JSON.parse(stored);
       this.settings = { ...structuredClone(DEFAULT_SETTINGS), ...parsed };
+      // migrate an older layout format (a bare array of chart-type keys)
+      // and re-clamp spans in case `columns` changed since it was saved
+      this.settings.layout = normalizeLayout(this.settings.layout);
+      this.settings.layout = clampLayoutToColumns(this.settings.layout, this.settings.columns);
       if (parsed.sweep) this.sweep = Sweep.fromJSON(parsed.sweep);
       this.bands = BAND_REGIONS[this.settings.bandRegion] ?? DEFAULT_BANDS;
     } catch (error) {
@@ -102,6 +106,10 @@ export class AppState extends Emitter {
     this.settings = { ...this.settings, ...changes };
     if (changes.bandRegion) {
       this.bands = BAND_REGIONS[changes.bandRegion] ?? DEFAULT_BANDS;
+    }
+    if (changes.columns !== undefined) {
+      // a narrower grid may no longer fit panels at their current width
+      this.settings.layout = clampLayoutToColumns(this.settings.layout, changes.columns);
     }
     this.saveSettings();
     this.emit('settings', this.settings);

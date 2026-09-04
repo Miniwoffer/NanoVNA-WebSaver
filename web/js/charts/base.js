@@ -21,6 +21,20 @@
 // The chart base: canvas plumbing, the theme, and the pointer handling
 // that every chart shares. Ported in spirit from NanoVNASaver/Charts.
 
+/**
+ * Colours for a panel combining more than one layer, cycled by index.
+ *
+ * A single-layer chart never uses this -- it keeps the two-tone
+ * sweep/sweepSecondary scheme below, unchanged from before panels could
+ * hold more than one layer.
+ */
+export const LAYER_PALETTE = [
+  '#0000ff', '#008000', '#cc6600', '#aa00aa', '#008b8b', '#b8860b',
+];
+export const DARK_LAYER_PALETTE = [
+  '#4f9dff', '#3ddc84', '#e8a33d', '#d072ff', '#37d5d6', '#e0c341',
+];
+
 export const DEFAULT_THEME = {
   background: '#ffffff',
   foreground: '#bbbbbb',
@@ -33,6 +47,7 @@ export const DEFAULT_THEME = {
   bands: 'rgba(128, 128, 128, 0.25)',
   swr: '#ff0000',
   markerColors: ['#ffdf00', '#00d0ff', '#ff6ec7', '#7cff5b'],
+  layerPalette: LAYER_PALETTE,
 };
 
 export const DARK_THEME = {
@@ -47,7 +62,29 @@ export const DARK_THEME = {
   referenceSecondary: '#d072ff',
   bands: 'rgba(160, 170, 190, 0.18)',
   swr: '#ff6b6b',
+  layerPalette: DARK_LAYER_PALETTE,
 };
+
+/**
+ * The colour one trace draws in.
+ *
+ * A trace carrying a `paletteIndex` (set once a panel combines more than
+ * one layer) cycles through the theme's layer palette, so every line in
+ * a combined panel is distinguishable regardless of which chart type or
+ * axis it came from. Otherwise falls back to the original two-tone
+ * sweep/reference scheme a single-layer chart has always used, so an
+ * unmodified single-chart-type panel renders exactly as before.
+ */
+export function colorForTrace(theme, trace) {
+  if (trace.paletteIndex !== undefined) {
+    const palette = theme.layerPalette ?? LAYER_PALETTE;
+    return palette[trace.paletteIndex % palette.length];
+  }
+  if (trace.isReference) {
+    return trace.colorKey === 'referenceSecondary' ? theme.referenceSecondary : theme.reference;
+  }
+  return trace.colorKey === 'sweepSecondary' ? theme.sweepSecondary : theme.sweep;
+}
 
 const MARGIN = { left: 46, right: 18, top: 26, bottom: 30 };
 /** how close a click has to be, in pixels, to grab a marker */
@@ -348,6 +385,47 @@ export class Chart {
       ctx.fillText(label, x, y - 11);
     }
     ctx.restore();
+  }
+
+  /**
+   * A row of "swatch label" pairs, wrapped to fit `maxWidth`.
+   *
+   * Used when a panel combines more than one layer into a mini-chart, so
+   * the reader can tell which trace is which; a single-layer chart never
+   * has more than one distinct label and so never calls this.
+   *
+   * @param {{label:string, color:string}[]} items
+   * @returns {number} the height in pixels the legend occupied
+   */
+  drawLegend(ctx, items, x, y, maxWidth) {
+    if (!items.length) return 0;
+    ctx.save();
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    const swatch = 7;
+    const gapAfterSwatch = 4;
+    const gapBetweenItems = 12;
+    const lineHeight = 14;
+    let cx = x;
+    let cy = y + lineHeight / 2;
+    let rows = 1;
+    for (const item of items) {
+      const textWidth = ctx.measureText(item.label).width;
+      const itemWidth = swatch + gapAfterSwatch + textWidth;
+      if (cx > x && cx + itemWidth > x + maxWidth) {
+        cx = x;
+        cy += lineHeight;
+        rows += 1;
+      }
+      ctx.fillStyle = item.color;
+      ctx.fillRect(cx, cy - swatch / 2, swatch, swatch);
+      ctx.fillStyle = this.theme.text;
+      ctx.textAlign = 'left';
+      ctx.fillText(item.label, cx + swatch + gapAfterSwatch, cy);
+      cx += itemWidth + gapBetweenItems;
+    }
+    ctx.restore();
+    return rows * lineHeight;
   }
 }
 

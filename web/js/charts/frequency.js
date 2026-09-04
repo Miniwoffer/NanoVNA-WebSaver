@@ -20,30 +20,54 @@
 
 // Everything the desktop application plots against frequency, drawn by
 // one chart that is told which value or values to take from each point.
+//
+// A panel combining more than one chart type merges all of their series
+// into `this.series` (see registry.js `mergeSeriesForLayers`), each
+// tagged with which of the two Y axes it belongs on. A chart built the
+// old way -- one registry entry, via `createChart()` -- has every series
+// implicitly on the left axis and never populates `right`, so it renders
+// exactly as it always has.
 
-import { Chart, niceStep } from './base.js';
+import { Chart, colorForTrace, niceStep } from './base.js';
 import { formatFrequencyChart } from '../util/format.js';
 
 const Y_DIVISIONS = 8;
+/** Height reserved above the plot for the combined-panel legend. */
+const LEGEND_HEIGHT = 16;
+
+/** Resolve one axis's range: the stored fixed bounds, or the auto-scanned ones. */
+export function resolveAxisRange(axisLimits, autoRange) {
+  if (axisLimits.mode === 'fixed') return [Number(axisLimits.min), Number(axisLimits.max)];
+  return autoRange;
+}
 
 export class FrequencyChart extends Chart {
   /**
-   * @param {{key, name, series, unit, formatY, logarithmicYAllowed,
-   *          fixedSpan, minimum, maximum, referenceLines}} definition
+   * @param {{key, name, series, unit, formatY, unitRight, formatYRight,
+   *          logarithmicYAllowed, referenceLines}} definition
+   *   `referenceLines` may be a flat array (drawn on the left axis, the
+   *   original single-axis shape) or `{left, right}`.
    */
   constructor(definition) {
     super(definition);
     this.series = definition.series;
     this.unit = definition.unit ?? '';
     this.formatY = definition.formatY ?? ((v) => shortNumber(v));
+    this.unitRight = definition.unitRight ?? '';
+    this.formatYRight = definition.formatYRight ?? null;
     this.logarithmicY = false;
     this.logarithmicX = false;
-    this.fixedValues = false;
-    this.minDisplayValue = definition.minimum ?? 0;
-    this.maxDisplayValue = definition.maximum ?? 1;
-    this.referenceLines = definition.referenceLines ?? [];
+    this.axisLimits = {
+      left: { mode: 'auto', min: 0, max: 1 },
+      right: { mode: 'auto', min: 0, max: 1 },
+    };
+    const refLines = definition.referenceLines;
+    this.referenceLines = Array.isArray(refLines)
+      ? { left: refLines, right: [] }
+      : { left: refLines?.left ?? [], right: refLines?.right ?? [] };
     this.hover = null;
     this._scale = null;
+    this._legendHeight = 0;
   }
 
   get supportsZoom() {
@@ -54,10 +78,23 @@ export class FrequencyChart extends Chart {
     return !!this.definition.logarithmicYAllowed;
   }
 
-  setFixedSpan(enabled, minimum, maximum) {
-    this.fixedValues = enabled;
-    if (minimum !== undefined) this.minDisplayValue = minimum;
-    if (maximum !== undefined) this.maxDisplayValue = maximum;
+  /** Shrinks the plot area by the legend strip while one is showing. */
+  get plot() {
+    const base = super.plot;
+    if (!this._legendHeight) return base;
+    return {
+      ...base,
+      top: base.top + this._legendHeight,
+      height: base.height - this._legendHeight,
+    };
+  }
+
+  /** Merge new limits into whichever axes are given, leaving the other alone. */
+  setAxisLimits(axisLimits) {
+    this.axisLimits = {
+      left: { ...this.axisLimits.left, ...(axisLimits.left ?? {}) },
+      right: { ...this.axisLimits.right, ...(axisLimits.right ?? {}) },
+    };
     this.requestDraw();
   }
 
@@ -69,6 +106,10 @@ export class FrequencyChart extends Chart {
   setLogarithmicX(enabled) {
     this.logarithmicX = enabled;
     this.requestDraw();
+  }
+
+  formatYFor(axis) {
+    return axis === 'right' && this.formatYRight ? this.formatYRight : this.formatY;
   }
 
   /** The traces this chart draws, resolved against the current data. */
@@ -117,13 +158,12 @@ export class FrequencyChart extends Chart {
     return [min, max];
   }
 
-  valueRange(traces, fstart, fstop) {
-    if (this.fixedValues) {
-      return [Number(this.minDisplayValue), Number(this.maxDisplayValue)];
-    }
+  /** The [min,max] a given axis should be drawn over. */
+  valueRange(traces, fstart, fstop, axis = 'left') {
+    const relevant = traces.filter((t) => (t.axis ?? 'left') === axis);
     let min = Infinity;
     let max = -Infinity;
-    for (const trace of traces) {
+    for (const trace of relevant) {
       const { data } = trace;
       for (let i = 0; i < data.length; i += 1) {
         if (data[i].freq < fstart || data[i].freq > fstop) continue;
@@ -133,25 +173,32 @@ export class FrequencyChart extends Chart {
         if (value > max) max = value;
       }
     }
-    if (!Number.isFinite(min) || !Number.isFinite(max)) return [0, 1];
-    if (min === max) {
+    let autoRange;
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      autoRange = [0, 1];
+    } else if (min === max) {
       const pad = Math.abs(min) * 0.1 || 1;
-      return [min - pad, max + pad];
+      autoRange = [min - pad, max + pad];
+    } else {
+      // round out to a whole number of divisions, as the desktop does
+      const step = niceStep(max - min, Y_DIVISIONS);
+      let low = Math.floor(min / step) * step;
+      let high = Math.ceil(max / step) * step;
+      if (this.logarithmicY) {
+        low = Math.max(1e-12, min);
+        high = max;
+      }
+      autoRange = [low, high];
     }
-    // round out to a whole number of divisions, as the desktop does
-    const step = niceStep(max - min, Y_DIVISIONS);
-    let low = Math.floor(min / step) * step;
-    let high = Math.ceil(max / step) * step;
-    if (this.logarithmicY) {
-      low = Math.max(1e-12, min);
-      high = max;
-    }
-    return [low, high];
+    return resolveAxisRange(this.axisLimits[axis], autoRange);
   }
 
   drawChart(ctx) {
     const range = this.frequencyRange();
     const traces = this.traces();
+    const legendItems = this.#legendItems(traces);
+    this._legendHeight = legendItems.length ? LEGEND_HEIGHT : 0;
+
     const { left, right, top, bottom, width, height } = this.plot;
 
     if (!range) {
@@ -159,13 +206,20 @@ export class FrequencyChart extends Chart {
       return;
     }
     const [fstart, fstop] = range;
-    const [minValue, maxValue] = this.valueRange(traces, fstart, fstop);
+    const hasRight = traces.some((t) => t.axis === 'right');
+    const [leftMin, leftMax] = this.valueRange(traces, fstart, fstop, 'left');
+    const rightRange = hasRight ? this.valueRange(traces, fstart, fstop, 'right') : null;
 
-    this._scale = { fstart, fstop, minValue, maxValue };
+    this._scale = {
+      fstart,
+      fstop,
+      left: { minValue: leftMin, maxValue: leftMax },
+      right: rightRange ? { minValue: rightRange[0], maxValue: rightRange[1] } : null,
+    };
 
     this.#drawBands(ctx, fstart, fstop);
-    this.#drawGrid(ctx, fstart, fstop, minValue, maxValue);
-    this.#drawReferenceLines(ctx, minValue, maxValue);
+    this.#drawGrid(ctx, fstart, fstop);
+    this.#drawReferenceLines(ctx);
 
     ctx.save();
     ctx.beginPath();
@@ -178,9 +232,34 @@ export class FrequencyChart extends Chart {
     this.#drawMarkers(ctx);
     this.#drawHover(ctx);
 
+    if (legendItems.length) {
+      const basePlot = super.plot;
+      this.drawLegend(ctx, legendItems, basePlot.left, basePlot.top, basePlot.width);
+    }
+
     ctx.strokeStyle = this.theme.axis;
     ctx.lineWidth = 1;
     ctx.strokeRect(left + 0.5, top + 0.5, right - left - 1, bottom - top - 1);
+  }
+
+  /**
+   * Labels for the legend, one per distinct live trace.
+   *
+   * Only shown once a panel actually combines more than one layer --
+   * signalled by a trace carrying `paletteIndex` -- so an unmodified
+   * single-chart-type panel (even a two-series one, like R+jX) keeps
+   * showing exactly as it always has, with no legend.
+   */
+  #legendItems(traces) {
+    if (!traces.some((t) => t.paletteIndex !== undefined)) return [];
+    const seen = new Set();
+    const items = [];
+    for (const trace of traces) {
+      if (trace.isReference || seen.has(trace.label)) continue;
+      seen.add(trace.label);
+      items.push({ label: trace.label, color: colorForTrace(this.theme, trace) });
+    }
+    return items;
   }
 
   #drawEmptyFrame(ctx) {
@@ -207,10 +286,11 @@ export class FrequencyChart extends Chart {
     return left + (width * (freq - fstart)) / span;
   }
 
-  yPosition(value) {
+  yPosition(value, axis = 'left') {
     const { top, height } = this.plot;
-    const { minValue, maxValue } = this._scale;
-    if (!Number.isFinite(value)) return null;
+    const scale = this._scale?.[axis];
+    if (!scale || !Number.isFinite(value)) return null;
+    const { minValue, maxValue } = scale;
     if (this.logarithmicY) {
       const lo = Math.log10(Math.max(1e-12, minValue));
       const hi = Math.log10(Math.max(lo + 1e-9, maxValue));
@@ -249,38 +329,20 @@ export class FrequencyChart extends Chart {
     ctx.restore();
   }
 
-  #drawGrid(ctx, fstart, fstop, minValue, maxValue) {
+  #drawGrid(ctx, fstart, fstop) {
     const { left, right, top, bottom, width } = this.plot;
     ctx.save();
     ctx.strokeStyle = this.theme.foreground;
     ctx.fillStyle = this.theme.text;
     ctx.lineWidth = 1;
     ctx.font = '10px system-ui, sans-serif';
-
-    // horizontal lines and the y labels
-    ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    if (this.logarithmicY) {
-      const lo = Math.floor(Math.log10(Math.max(1e-12, minValue)));
-      const hi = Math.ceil(Math.log10(Math.max(1e-12, maxValue)));
-      for (let e = lo; e <= hi; e += 1) {
-        const value = 10 ** e;
-        const y = this.yPosition(value);
-        if (y === null || y < top - 1 || y > bottom + 1) continue;
-        line(ctx, left, y, right, y);
-        ctx.fillText(this.formatY(value), left - 5, y);
-      }
-    } else {
-      const step = niceStep(maxValue - minValue, Y_DIVISIONS);
-      const first = Math.ceil(minValue / step) * step;
-      for (let value = first; value <= maxValue + step * 1e-9; value += step) {
-        const y = this.yPosition(value);
-        if (y === null || y < top - 1 || y > bottom + 1) continue;
-        line(ctx, left, y, right, y);
-        // the step can be fractional, so round away accumulated error
-        ctx.fillText(this.formatY(roundTo(value, step)), left - 5, y);
-      }
-    }
+
+    // the left axis draws both gridlines and labels, as it always has
+    this.#drawYTicks(ctx, 'left', true);
+    // a right axis, when present, only adds tick labels -- a second set
+    // of gridlines at a different spacing would just be visual noise
+    if (this._scale.right) this.#drawYTicks(ctx, 'right', false);
 
     // vertical lines and the frequency labels
     ctx.textAlign = 'center';
@@ -293,6 +355,43 @@ export class FrequencyChart extends Chart {
       ctx.fillText(formatFrequencyChart(freq), x, bottom + 5);
     }
     ctx.restore();
+  }
+
+  #drawYTicks(ctx, axis, drawGridlines) {
+    const { left, right, top, bottom } = this.plot;
+    const { minValue, maxValue } = this._scale[axis];
+    const format = this.formatYFor(axis);
+    const labelX = axis === 'right' ? right + 5 : left - 5;
+    ctx.textAlign = axis === 'right' ? 'left' : 'right';
+
+    if (this.logarithmicY) {
+      const lo = Math.floor(Math.log10(Math.max(1e-12, minValue)));
+      const hi = Math.ceil(Math.log10(Math.max(1e-12, maxValue)));
+      for (let e = lo; e <= hi; e += 1) {
+        const value = 10 ** e;
+        const y = this.yPosition(value, axis);
+        if (y === null || y < top - 1 || y > bottom + 1) continue;
+        if (drawGridlines) line(ctx, left, y, right, y);
+        ctx.fillText(format(value), labelX, y);
+      }
+      return;
+    }
+    const step = niceStep(maxValue - minValue, Y_DIVISIONS);
+    const first = Math.ceil(minValue / step) * step;
+    // a handful more than Y_DIVISIONS is always enough for a healthy
+    // axis; the cap only matters when `step` is too small relative to
+    // `value`'s magnitude to change it (min and max agreeing to within
+    // float noise, or a pathologically narrow fixed range), which would
+    // otherwise spin forever since `value += step` never advances
+    const maxTicks = Y_DIVISIONS + 4;
+    let value = first;
+    for (let n = 0; n < maxTicks && value <= maxValue + step * 1e-9; n += 1, value += step) {
+      const y = this.yPosition(value, axis);
+      if (y === null || y < top - 1 || y > bottom + 1) continue;
+      if (drawGridlines) line(ctx, left, y, right, y);
+      // the step can be fractional, so round away accumulated error
+      ctx.fillText(format(roundTo(value, step)), labelX, y);
+    }
   }
 
   #frequencyTicks(fstart, fstop, count) {
@@ -311,49 +410,53 @@ export class FrequencyChart extends Chart {
     const step = niceStep(fstop - fstart, count);
     const ticks = [];
     const first = Math.ceil(fstart / step) * step;
-    for (let value = first; value <= fstop + step * 1e-9; value += step) {
+    // see the matching guard in #drawYTicks: bounds the loop even if
+    // `step` turns out too small, relative to `fstart`'s magnitude, to
+    // ever advance `value`
+    const maxTicks = count + 4;
+    let value = first;
+    for (let n = 0; n < maxTicks && value <= fstop + step * 1e-9; n += 1, value += step) {
       ticks.push(Math.round(value));
     }
     return ticks;
   }
 
-  #drawReferenceLines(ctx, minValue, maxValue) {
-    if (!this.referenceLines.length) return;
+  #drawReferenceLines(ctx) {
+    this.#drawReferenceLinesForAxis(ctx, this.referenceLines.left, 'left');
+    if (this._scale.right) this.#drawReferenceLinesForAxis(ctx, this.referenceLines.right, 'right');
+  }
+
+  #drawReferenceLinesForAxis(ctx, values, axis) {
+    if (!values.length) return;
     const { left, right } = this.plot;
+    const { minValue, maxValue } = this._scale[axis];
+    const format = this.formatYFor(axis);
     ctx.save();
     ctx.strokeStyle = this.theme.swr;
     ctx.fillStyle = this.theme.swr;
     ctx.setLineDash([4, 3]);
     ctx.font = '10px system-ui, sans-serif';
-    ctx.textAlign = 'left';
+    ctx.textAlign = axis === 'right' ? 'right' : 'left';
     ctx.textBaseline = 'bottom';
-    for (const value of this.referenceLines) {
+    const labelX = axis === 'right' ? right - 4 : left + 4;
+    for (const value of values) {
       if (value < minValue || value > maxValue) continue;
-      const y = this.yPosition(value);
+      const y = this.yPosition(value, axis);
       if (y === null) continue;
       line(ctx, left, y, right, y);
-      ctx.fillText(this.formatY(value), left + 4, y - 1);
+      ctx.fillText(format(value), labelX, y - 1);
     }
     ctx.restore();
   }
 
-  #colorFor(trace) {
-    const { theme } = this;
-    if (trace.isReference) {
-      return trace.colorKey === 'referenceSecondary'
-        ? theme.referenceSecondary
-        : theme.reference;
-    }
-    return trace.colorKey === 'sweepSecondary' ? theme.sweepSecondary : theme.sweep;
-  }
-
   #drawTrace(ctx, trace, fstart, fstop) {
     const { data } = trace;
+    const axis = trace.axis ?? 'left';
     ctx.save();
-    ctx.strokeStyle = this.#colorFor(trace);
+    ctx.strokeStyle = colorForTrace(this.theme, trace);
     ctx.fillStyle = ctx.strokeStyle;
     ctx.lineWidth = this.lineWidth;
-    if (trace.dashed) ctx.setLineDash([5, 3]);
+    if (trace.isReference && trace.paletteIndex !== undefined) ctx.globalAlpha = 0.55;
 
     let started = false;
     ctx.beginPath();
@@ -364,7 +467,7 @@ export class FrequencyChart extends Chart {
         continue;
       }
       const value = trace.value(dp, i, data);
-      const y = this.yPosition(value);
+      const y = this.yPosition(value, axis);
       if (y === null || !Number.isFinite(y)) {
         started = false;
         continue;
@@ -388,12 +491,13 @@ export class FrequencyChart extends Chart {
 
   markerPosition(marker) {
     if (!this._scale) return null;
-    const primary = this.series[0];
+    const primary = this.series.find((s) => (s.axis ?? 'left') === 'left') ?? this.series[0];
+    if (!primary) return null;
     const data = this.data[primary.source] ?? [];
     if (!data.length || marker.location < 0 || marker.location >= data.length) return null;
     const dp = data[marker.location];
     const value = primary.value(dp, marker.location, data);
-    const y = this.yPosition(value);
+    const y = this.yPosition(value, primary.axis ?? 'left');
     if (y === null || !Number.isFinite(y)) return null;
     return { x: this.xPosition(dp.freq), y };
   }

@@ -25,7 +25,7 @@ web-serve:
 web-test:
 	node web/tests/run.js \
 	  ./core.test.js ./numeric.test.js ./analysis.test.js \
-	  ./device.test.js ./sweep.test.js
+	  ./device.test.js ./sweep.test.js ./panels.test.js ./charts.test.js
 
 
 # build a new debian package and create a link in the current directory
