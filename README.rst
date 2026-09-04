@@ -43,6 +43,27 @@ This software connects to a NanoVNA and extracts the data for
 display on a computer and allows saving the sweep data to Touchstone files.
 
 
+Web application
+^^^^^^^^^^^^^^^
+
+The same tool is also available as a web application that runs entirely
+in the browser, using the `Web Serial API
+<https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API>`_ to
+talk to the device. It needs no backend, no installation and no build
+step, and it offers the same devices, sweeps, calibration, charts,
+markers, analyses and Touchstone import and export as the desktop
+application.
+
+Serve it and open it in Chrome, Edge or Opera:
+
+.. code-block:: sh
+
+   make web-serve      # then open http://localhost:8000
+
+See `web/README.md <web/README.md>`_ for the details, including which
+parts still work in browsers without the Web Serial API.
+
+
 Current features
 ^^^^^^^^^^^^^^^^
 

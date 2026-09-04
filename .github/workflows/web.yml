@@ -1,0 +1,30 @@
+name: Web application
+
+on:
+  push:
+    paths:
+      - 'web/**'
+      - 'tests/data/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'tests/data/**'
+      - '.github/workflows/web.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # the suite has no dependencies: it runs on node alone
+      - name: Run the tests
+        run: make web-test

@@ -1,10 +1,31 @@
 .PHONY: info
 info:
+	@echo "- type 'make web-serve' to serve the web application"
+	@echo "- type 'make web-test' to run the web application's tests"
 	@echo "- type 'make deb' to build a debian package"
 	@echo "- type 'make rpm' to build an (experimental) rpm package"
 	@echo "- you need the debian packages"
 	@echo "  fakeroot python3-setuptools python3-stdeb dh-python"
 	@echo
+
+
+# the port the web application is served on
+WEB_PORT ?= 8000
+
+# serve the web application. Web Serial needs a secure context, which
+# http://localhost counts as, so this is enough to use a real device.
+.PHONY: web-serve
+web-serve:
+	@echo "Open http://localhost:$(WEB_PORT) in Chrome, Edge or Opera"
+	cd web && python3 -m http.server $(WEB_PORT) --bind 127.0.0.1
+
+
+# run the web application's test suite. Needs node, nothing else.
+.PHONY: web-test
+web-test:
+	node web/tests/run.js \
+	  ./core.test.js ./numeric.test.js ./analysis.test.js \
+	  ./device.test.js ./sweep.test.js
 
 
 # build a new debian package and create a link in the current directory

@@ -1,0 +1,496 @@
+/*
+ *  NanoVNA-WebSaver
+ *
+ *  Copyright (C) 2020ff NanoVNA-Saver Authors
+ *  Licensed under the GNU General Public License v3 or later.
+ */
+
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel-border: #d8dce3;
+  --text: #1c2028;
+  --muted: #6b7280;
+  --accent: #0b5fff;
+  --accent-text: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #c3c9d4;
+  --warning: #b42318;
+  --shadow: 0 1px 2px rgb(16 24 40 / 8%);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-border: #2a323d;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --accent: #4f9dff;
+  --accent-text: #06101f;
+  --input-bg: #0d1117;
+  --input-border: #303a46;
+  --warning: #ff7b72;
+  --shadow: none;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'topbar topbar'
+    'sidebar workspace';
+  height: 100vh;
+}
+
+/* ------------------------------------------------------------ topbar */
+
+.topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.brand {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60ch;
+}
+
+.status-text.error {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.status-sweep {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------- sidebar */
+
+.sidebar {
+  grid-area: sidebar;
+  overflow-y: auto;
+  padding: 12px;
+  border-right: 1px solid var(--panel-border);
+  background: var(--bg);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.panel-title {
+  margin: 0;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.panel-title::before {
+  content: '▾';
+  display: inline-block;
+  width: 1.1em;
+  color: var(--muted);
+}
+
+.panel.collapsed .panel-title::before {
+  content: '▸';
+}
+
+.panel.collapsed .panel-body {
+  display: none;
+}
+
+.panel-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.about {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 4px 6px 20px;
+}
+
+.about a {
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------ fields */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.field-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.input {
+  width: 100%;
+  padding: 5px 7px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 5px;
+}
+
+.input:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+textarea.input {
+  resize: vertical;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn {
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--input-border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.progress {
+  width: 100%;
+  height: 6px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.warning {
+  color: var(--warning);
+  font-size: 12px;
+  margin: 0;
+}
+
+.info-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.info-list dt {
+  color: var(--muted);
+}
+
+.info-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ----------------------------------------------------------- markers */
+
+.marker {
+  border-left: 3px solid var(--accent);
+  padding: 6px 0 6px 8px;
+  margin-bottom: 8px;
+}
+
+.marker-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.marker-head input[type='color'] {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  background: none;
+}
+
+.marker-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.readouts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 10px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.readout {
+  display: contents;
+}
+
+.readout-label {
+  color: var(--muted);
+}
+
+.readout-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.readout-picker {
+  font-size: 12px;
+}
+
+.readout-picker summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------- calibration */
+
+.cal-standards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cal-standard {
+  display: grid;
+  grid-template-columns: 5.5em 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.cal-name {
+  text-transform: capitalize;
+}
+
+.cal-count {
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------- analysis */
+
+.analysis-results h3 {
+  margin: 8px 0 2px;
+  font-size: 13px;
+}
+
+.analysis-results h4 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------- workspace */
+
+.workspace {
+  grid-area: workspace;
+  overflow: auto;
+  padding: 12px;
+  min-width: 0;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.chart-card {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+  aspect-ratio: 4 / 3;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.chart-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.chart-actions {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.chart-card:hover .chart-actions,
+.chart-card:focus-within .chart-actions {
+  opacity: 1;
+}
+
+.chart-action {
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.screenshot {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.screenshot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.screenshot-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+}
+
+/* ------------------------------------------------------------ narrow */
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'topbar'
+      'sidebar'
+      'workspace';
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .chart-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
