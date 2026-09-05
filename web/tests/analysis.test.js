@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { assert, describe, it } from './harness.js';
-import { ANALYSES, Context, AnalysisError, runAnalysis } from '../js/rf/analysis.js';
+import { ANALYSES, Context, AnalysisError, runAnalysis } from '../js/rf/analysis/index.js';
 import { Calibration, CalDataSet } from '../js/rf/calibration.js';
 import { Datapoint, reflectionCoefficient } from '../js/rf/rftools.js';
 

@@ -38,7 +38,7 @@ import { formatFrequencySweep, parseFrequency } from '../util/format.js';
 import { SweepMode } from '../rf/sweep.js';
 import { STANDARDS } from '../rf/calibration.js';
 import { READOUT_TYPES } from '../app/markers.js';
-import { ANALYSES, AnalysisError, Context, runAnalysis } from '../rf/analysis.js';
+import { ANALYSES, AnalysisError, Context, runAnalysis } from '../rf/analysis/index.js';
 import { CABLE_PARAMETERS, FORMATS as TDR_FORMATS, WINDOWS as TDR_WINDOWS } from '../rf/tdr.js';
 import { BAND_REGIONS } from '../app/bands.js';
 import { serialSupported, serialUnsupportedReason } from '../device/transport.js';
