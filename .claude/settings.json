@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(make web-test)",
+      "Bash(make web-serve)",
+      "Bash(node web/tests/run.js:*)",
+      "Bash(node --check:*)",
+      "Bash(node --input-type=module -e:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(ls:*)",
+      "Bash(find web:*)",
+      "Bash(wc:*)"
+    ]
+  }
+}

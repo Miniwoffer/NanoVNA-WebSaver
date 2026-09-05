@@ -48,22 +48,35 @@ unavailable. The application says so rather than failing silently.
 
 ## Using it
 
-1. Press **Add device** and pick the serial port in the browser's
-   chooser. The device is identified and its driver selected
-   automatically, exactly as the desktop application does it.
-2. Set the sweep range, then press **Sweep**, **Continuous** or
-   **Averaged**.
-3. Drag on a chart to zoom into a span; double click to zoom back out.
-   Drag a marker, or click a chart, to move the nearest marker.
+The window is a topbar of menus, a grid of chart panels, the marker
+readouts floating over them, and the frequency range bar along the
+bottom.
+
+1. Press **Connect** in the top right and pick the serial port in the
+   browser's chooser. The device is identified and its driver selected
+   automatically, exactly as the desktop application does it. Once
+   connected the button becomes the instrument's name, with its settings
+   and **Calibrate…** behind it.
+2. Set the range in the **Sweep** menu, or drag the range bar along the
+   bottom, then press **Sweep**, **Continuous** or **Averaged**. A
+   running continuous sweep follows the range as you change it.
+3. Drag on a chart to zoom into a span. Drag a marker, or click a chart,
+   to move the nearest marker. Use the range bar to get back out again:
+   drag its middle to move the sweep, its ends to set start and stop, or
+   roll the wheel over it to change the span.
 4. The chart grid is a Grafana-style dashboard: drag a panel by its
    header to reorder it, drag its bottom-right corner to resize it across
    columns and rows, and use its **⚙** button to add, remove or rearrange
    the chart types it overlays and to lock an axis to a fixed range
    instead of autoscaling. **+ Add panel** adds a new one.
+5. The marker cards on the right expand to show their readouts, and each
+   marker picks its own — impedance on one, VSWR on another.
+6. **Recording** captures a run of sweeps with the time between them,
+   and plays it back over the charts afterwards.
 
-Settings, the sweep and the chart layout — including each panel's size,
-position, combined chart types and axis limits — are remembered in the
-browser's local storage.
+Settings, the sweep, the markers and the chart layout — including each
+panel's size, position, combined chart types and axis limits — are
+remembered in the browser's local storage.
 
 ## What is supported
 
@@ -99,9 +112,14 @@ draw as their own mini-chart alongside the others in the same panel. Any
 axis can be locked to a fixed range (handy for keeping VSWR from
 autoscaling out to a decade) or left on autoscale.
 
-**Markers.** Any number of markers, each with the full readout table —
-impedance, admittance, series and parallel equivalents, VSWR, return
-loss, Q, group delay and the S21 readouts.
+**Markers.** Any number of markers, floating over the right of the
+charts as collapsible cards. Each picks its own readouts from the full
+table — impedance, admittance, series and parallel equivalents, VSWR,
+return loss, Q, group delay and the S21 readouts.
+
+**Recording.** A run of sweeps captured with the time between them, with
+playback over the charts at real time or faster, and export and import
+as a JSON file.
 
 **Analysis.** Peak search, simple peak search, VSWR, resonance, EFHW,
 magnetic loop tuning, and high pass, low pass, band pass and band stop
@@ -118,12 +136,14 @@ web/
   css/app.css
   js/
     main.js           entry point
-    app/              application state, sweep runner, markers, bands
+    app/              state, sweep runner, markers, bands, recorder
     charts/           the chart engine and the chart catalogue
     device/           Web Serial transport, drivers, device detection
     rf/               RF maths, Touchstone, calibration, analyses, TDR
-    ui/               DOM helpers, the sidebar panels, the chart grid
-                      and its drag-to-reorder/drag-to-resize interactions
+    ui/               DOM helpers and every piece of interface: the
+                      topbar menus, the chart grid and its drags, the
+                      marker overlay, the range bar, the calibration
+                      wizard
   tests/              the test suite, run under node
 ```
 
