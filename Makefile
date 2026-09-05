@@ -1,18 +1,14 @@
 .PHONY: info
 info:
-	@echo "- type 'make web-serve' to serve the web application"
-	@echo "- type 'make web-test' to run the web application's tests"
-	@echo "- type 'make deb' to build a debian package"
-	@echo "- type 'make rpm' to build an (experimental) rpm package"
-	@echo "- you need the debian packages"
-	@echo "  fakeroot python3-setuptools python3-stdeb dh-python"
+	@echo "- type 'make web-serve' to serve the application"
+	@echo "- type 'make web-test' to run the test suite"
 	@echo
 
 
-# the port the web application is served on
+# the port the application is served on
 WEB_PORT ?= 8000
 
-# serve the web application. Web Serial needs a secure context, which
+# serve the application. Web Serial needs a secure context, which
 # http://localhost counts as, so this is enough to use a real device.
 .PHONY: web-serve
 web-serve:
@@ -20,61 +16,9 @@ web-serve:
 	cd web && python3 -m http.server $(WEB_PORT) --bind 127.0.0.1
 
 
-# run the web application's test suite. Needs node, nothing else.
+# run the test suite. Needs node, nothing else.
 .PHONY: web-test
 web-test:
 	node web/tests/run.js \
 	  ./core.test.js ./numeric.test.js ./analysis.test.js \
 	  ./device.test.js ./sweep.test.js ./panels.test.js ./charts.test.js
-
-
-# build a new debian package and create a link in the current directory
-.PHONY: deb
-deb: clean
-	@# build the deb package
-	PYBUILD_DISABLE=test python3 setup.py \
-	  --command-packages=stdeb.command \
-	  sdist_dsc --compat 10 --package3 nanovnasaver --section electronics \
-	  bdist_deb
-	@# create a link in the main directory
-	-@ rm nanovnasaver_*_all.deb
-	-@ln `ls deb_dist/nanovnasaver_*.deb | tail -1` .
-	@# and show the result
-	@ls -l nanovnasaver_*.deb
-
-
-# build a new rpm package and create a link in the current directory
-.PHONY: rpm
-rpm: clean
-	@# build the rpm package
-	PYBUILD_DISABLE=test python3 setup.py bdist_rpm
-	@# create a link in the main directory
-	-@ rm NanoVNASaver-*.noarch.rpm
-	@ln `ls dist/NanoVNASaver-*.noarch.rpm | tail -1` .
-	@# and show the result
-	@ls -l NanoVNASaver-*.noarch.rpm
-
-
-# remove all package build artifacts (keep the *.deb)
-.PHONY: clean
-clean:
-	python3 setup.py clean
-	-rm -rf build deb_dist dist *.tar.gz *.egg*
-
-
-# remove all package build artefacts
-.PHONY: distclean
-distclean: clean
-	-rm -f *.deb *.rpm
-
-
-# build and install a new debian package
-.PHONY: debinstall
-debinstall: deb
-	sudo apt install ./nanovnasaver_*.deb
-
-
-# uninstall this debian package
-.PHONY: debuninstall
-debuninstall:
-	sudo apt purge nanovnasaver

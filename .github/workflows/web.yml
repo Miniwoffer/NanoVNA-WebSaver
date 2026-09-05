@@ -4,12 +4,12 @@ on:
   push:
     paths:
       - 'web/**'
-      - 'tests/data/**'
+      - 'Makefile'
       - '.github/workflows/web.yml'
   pull_request:
     paths:
       - 'web/**'
-      - 'tests/data/**'
+      - 'Makefile'
       - '.github/workflows/web.yml'
 
 permissions:

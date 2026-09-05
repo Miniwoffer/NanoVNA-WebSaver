@@ -16,7 +16,7 @@ import { Datapoint, reflectionCoefficient } from '../js/rf/rftools.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const fixture = (name) =>
-  readFileSync(join(HERE, '..', '..', 'tests', 'data', name), 'utf-8');
+  readFileSync(join(HERE, 'data', name), 'utf-8');
 
 /** A series RLC resonator seen at S11, resonant near 14.1 MHz. */
 function resonator(points = 301, R = 25, L = 1e-6, C = 127e-12) {

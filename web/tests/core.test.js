@@ -21,7 +21,7 @@ import { zeroCrossings, maxima, minima, takeFromIdx, centerFromIdx,
          cutOffLeft, cutOffRight, dipCutOffs, calculateRolloff } from '../js/rf/analytic.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-export const DATA_DIR = join(HERE, '..', '..', 'tests', 'data');
+export const DATA_DIR = join(HERE, 'data');
 export const fixture = (name) => readFileSync(join(DATA_DIR, name), 'utf-8');
 
 describe('rftools', () => {
