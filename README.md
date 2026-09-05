@@ -1,3 +1,5 @@
+This is just a lazy vibe coded web port of the amazing [nanovna-saver](https://github.com/NanoVNA-Saver/nanovna-saver) project!
+I wanted something running in the browser while playing with my NanoVNA-H4!
 # NanoVNA-WebSaver
 
 Read, display, analyse and export Touchstone data from a NanoVNA, in the
