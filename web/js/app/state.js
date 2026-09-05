@@ -28,7 +28,13 @@ import { Touchstone } from '../rf/touchstone.js';
 import { corrAttData } from '../rf/rftools.js';
 import { SweepWorker } from './sweepworker.js';
 import { DEFAULT_BANDS, DEFAULT_REGION, BAND_REGIONS } from './bands.js';
-import { DEFAULT_READOUTS, createMarker, nearestIndex, readoutsAt } from './markers.js';
+import {
+  DEFAULT_READOUTS,
+  createMarker,
+  nearestIndex,
+  normalizeMarkers,
+  readoutsAt,
+} from './markers.js';
 import { clampLayoutToColumns, defaultLayout, normalizeLayout } from '../charts/registry.js';
 import { connectDevice, describePort, grantedPorts, requestPort } from '../device/detect.js';
 
@@ -84,6 +90,8 @@ export class AppState extends Emitter {
       this.settings.layout = normalizeLayout(this.settings.layout);
       this.settings.layout = clampLayoutToColumns(this.settings.layout, this.settings.columns);
       if (parsed.sweep) this.sweep = Sweep.fromJSON(parsed.sweep);
+      // markers carry their own readout selection, so they are stored too
+      this.markers = normalizeMarkers(parsed.markers, this.settings.readouts);
       this.bands = BAND_REGIONS[this.settings.bandRegion] ?? DEFAULT_BANDS;
     } catch (error) {
       // corrupt or unavailable storage must never stop the application
@@ -95,7 +103,11 @@ export class AppState extends Emitter {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ ...this.settings, sweep: this.sweep.toJSON() }),
+        JSON.stringify({
+          ...this.settings,
+          sweep: this.sweep.toJSON(),
+          markers: this.markers,
+        }),
       );
     } catch (error) {
       console.warn('Could not store settings', error);
@@ -305,11 +317,14 @@ export class AppState extends Emitter {
     if (!marker) return;
     Object.assign(marker, changes);
     this.emit('markers', this.markers);
+    // name, colour, readouts and expansion all outlive the session
+    this.saveSettings();
   }
 
   addMarker() {
-    this.markers.push(createMarker(this.markers.length));
+    this.markers.push(createMarker(this.markers.length, this.settings.readouts));
     this.emit('markers', this.markers);
+    this.saveSettings();
   }
 
   removeMarker(index) {
@@ -318,6 +333,7 @@ export class AppState extends Emitter {
       marker.index = i;
     });
     this.emit('markers', this.markers);
+    this.saveSettings();
   }
 
   /** Keep marker positions valid after the data changed. */

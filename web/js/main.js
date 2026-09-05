@@ -25,11 +25,11 @@ import { clear, el } from './ui/dom.js';
 import { deviceMenu } from './ui/device.js';
 import { sweepControls } from './ui/sweep.js';
 import { rangeBar } from './ui/rangebar.js';
+import { markerOverlay } from './ui/markers.js';
 import {
   analysisPanel,
   displayPanel,
   filesPanel,
-  markerPanel,
   tdrPanel,
 } from './ui/panels.js';
 
@@ -47,7 +47,6 @@ function main() {
   const sidebar = el(
     'aside.sidebar',
     {},
-    markerPanel(state),
     filesPanel(state),
     analysisPanel(state),
     tdrPanel(state),
@@ -85,7 +84,14 @@ function main() {
         el('div.topbar-right', {}, deviceMenu(state).node),
       ),
       sidebar,
-      el('main.workspace', {}, screenshotHolder, chartsContainer),
+      el(
+        'main.workspace',
+        {},
+        // the charts scroll inside their own box so the marker overlay
+        // pinned beside them stays put
+        el('div.workspace-scroll', {}, screenshotHolder, chartsContainer),
+        markerOverlay(state),
+      ),
       rangeBar(state),
     ),
   );

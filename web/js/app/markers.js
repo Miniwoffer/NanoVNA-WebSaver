@@ -87,7 +87,7 @@ export const DEFAULT_READOUTS = READOUT_TYPES.filter((t) => t.defaultActive).map
 
 export const MARKER_COLORS = ['#ffdf00', '#00d0ff', '#ff6ec7', '#7cff5b'];
 
-export function createMarker(index) {
+export function createMarker(index, readouts = DEFAULT_READOUTS) {
   return {
     index,
     name: `Marker ${index + 1}`,
@@ -95,7 +95,42 @@ export function createMarker(index) {
     enabled: true,
     /** index into the sweep data, or -1 when unplaced */
     location: -1,
+    /** whether the card in the overlay shows its readouts */
+    expanded: index === 0,
+    /** which readouts this marker shows; each marker chooses its own */
+    readouts: [...readouts],
   };
+}
+
+const READOUT_IDS = new Set(READOUT_TYPES.map((t) => t.id));
+
+/**
+ * Bring stored markers back into the current shape.
+ *
+ * Markers only started being persisted once each of them carried its own
+ * readout selection, so anything read back may predate any part of this;
+ * nothing here may throw, and anything unusable falls back to a default
+ * set of markers.
+ */
+export function normalizeMarkers(stored, fallbackReadouts = DEFAULT_READOUTS) {
+  if (!Array.isArray(stored) || !stored.length) {
+    return [createMarker(0), createMarker(1), createMarker(2)];
+  }
+  const markers = stored.slice(0, 32).map((entry, index) => {
+    const marker = createMarker(index, fallbackReadouts);
+    if (!entry || typeof entry !== 'object') return marker;
+    if (typeof entry.name === 'string' && entry.name) marker.name = entry.name;
+    if (typeof entry.color === 'string' && /^#[0-9a-f]{3,8}$/i.test(entry.color)) {
+      marker.color = entry.color;
+    }
+    marker.enabled = entry.enabled !== false;
+    marker.expanded = !!entry.expanded;
+    if (Array.isArray(entry.readouts)) {
+      marker.readouts = entry.readouts.filter((id) => READOUT_IDS.has(id));
+    }
+    return marker;
+  });
+  return markers.length ? markers : [createMarker(0)];
 }
 
 /** The sweep index nearest a frequency. */

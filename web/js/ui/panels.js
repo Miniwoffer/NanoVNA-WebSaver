@@ -32,10 +32,8 @@ import {
   pickFile,
   readFileAsText,
   select,
-  textInput,
 } from './dom.js';
-import { formatFrequencySweep, parseFrequency } from '../util/format.js';
-import { READOUT_TYPES } from '../app/markers.js';
+import { formatFrequencySweep } from '../util/format.js';
 import { ANALYSES, AnalysisError, Context, runAnalysis } from '../rf/analysis/index.js';
 import { CABLE_PARAMETERS, FORMATS as TDR_FORMATS, WINDOWS as TDR_WINDOWS } from '../rf/tdr.js';
 import { BAND_REGIONS } from '../app/bands.js';
@@ -50,89 +48,6 @@ function guard(state, action) {
       state.emit('error', error.message);
     }
   };
-}
-
-// ------------------------------------------------------------ markers
-
-export function markerPanel(state) {
-  const list = el('div.markers');
-  const readoutPicker = el('details.readout-picker');
-
-  const render = () => {
-    clear(list);
-    state.markers.forEach((marker, index) => {
-      const readouts = state.markerReadouts(index);
-      const freqInput = textInput(
-        readouts ? readouts.values.actualfreq : '',
-        (event) => {
-          const freq = parseFrequency(event.target.value);
-          if (freq >= 0) state.setMarkerFrequency(index, freq);
-          else render();
-        },
-      );
-
-      const rows = state.settings.readouts
-        .map((id) => {
-          const type = READOUT_TYPES.find((t) => t.id === id);
-          const value = readouts ? readouts.values[id] : null;
-          if (!type || value === undefined || value === null) return null;
-          return el('div.readout', {},
-            el('span.readout-label', {}, type.name),
-            el('span.readout-value', {}, value));
-        })
-        .filter(Boolean);
-
-      list.append(
-        el(
-          'div.marker',
-          { style: { borderLeftColor: marker.color } },
-          el('div.marker-head', {},
-            el('input', {
-              type: 'color',
-              value: marker.color,
-              title: 'Marker colour',
-              on: { input: (e) => state.updateMarker(index, { color: e.target.value }) },
-            }),
-            textInput(marker.name, (e) => state.updateMarker(index, { name: e.target.value }),
-                      { class: 'marker-name' }),
-            checkbox('', marker.enabled, (e) =>
-              state.updateMarker(index, { enabled: e.target.checked })),
-            button('x', () => state.removeMarker(index), { title: 'Remove this marker' }),
-          ),
-          field('Frequency', freqInput),
-          el('div.readouts', {}, ...rows),
-        ),
-      );
-    });
-    list.append(el('div.row', {}, button('Add marker', () => state.addMarker())));
-  };
-
-  const renderPicker = () => {
-    clear(readoutPicker);
-    readoutPicker.append(el('summary', {}, 'Readouts shown'));
-    for (const type of READOUT_TYPES) {
-      readoutPicker.append(
-        checkbox(type.description, state.settings.readouts.includes(type.id), (event) => {
-          const readouts = new Set(state.settings.readouts);
-          if (event.target.checked) readouts.add(type.id);
-          else readouts.delete(type.id);
-          // keep the canonical order rather than click order
-          state.updateSettings({
-            readouts: READOUT_TYPES.filter((t) => readouts.has(t.id)).map((t) => t.id),
-          });
-          render();
-        }),
-      );
-    }
-  };
-
-  const node = panel('Markers', list, readoutPicker);
-  state.on('markers', render);
-  state.on('data', render);
-  state.on('settings', render);
-  render();
-  renderPicker();
-  return node;
 }
 
 // -------------------------------------------------------------- files
