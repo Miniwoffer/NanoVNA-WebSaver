@@ -32,7 +32,14 @@ import { parseFrequency } from '../util/format.js';
 
 export function markerOverlay(state) {
   const list = el('div.marker-cards');
-  const node = el('aside.marker-overlay', {}, list);
+  const collapse = el('button.marker-collapse', {
+    type: 'button',
+    on: {
+      click: () =>
+        state.updateSettings({ markersCollapsed: !state.settings.markersCollapsed }),
+    },
+  });
+  const node = el('aside.marker-overlay', {}, list, collapse);
 
   function readoutRows(marker) {
     const readouts = state.markerReadouts(marker.index);
@@ -130,7 +137,27 @@ export function markerOverlay(state) {
     );
   }
 
+  /** The edge handle: a chevron, and the markers' colours when folded. */
+  function renderCollapse(collapsed) {
+    collapse.title = collapsed
+      ? `Show the ${state.markers.length} marker readouts`
+      : 'Fold the marker readouts into the edge';
+    collapse.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    collapse.replaceChildren(
+      el('span', {}, collapsed ? '‹' : '›'),
+      ...(collapsed
+        ? state.markers.map((marker) =>
+            el('span.marker-pip', { style: { background: marker.color } }))
+        : []),
+    );
+  }
+
   function render() {
+    const collapsed = !!state.settings.markersCollapsed;
+    node.classList.toggle('collapsed', collapsed);
+    renderCollapse(collapsed);
+    if (collapsed) return; // nothing on screen to rebuild
+
     const cards = state.markers.map(card);
     cards.push(
       el('button.marker-add', {

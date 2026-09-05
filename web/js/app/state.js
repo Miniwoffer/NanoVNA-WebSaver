@@ -52,6 +52,7 @@ export const DEFAULT_SETTINGS = {
   bandsEnabled: false,
   bandRegion: DEFAULT_REGION,
   readouts: [...DEFAULT_READOUTS],
+  markersCollapsed: false,
   layout: defaultLayout(),
   columns: 3,
   tdr: { velocityFactor: 0.66, format: '|Z| (lowpass)', window: 'kaiser6' },

@@ -606,16 +606,28 @@ textarea.input {
 /* ----------------------------------------------------------- markers */
 
 /* a column floating over the right of the charts, so the readouts sit
-   beside the traces they describe rather than across the window */
+   beside the traces they describe rather than across the window.
+
+   Nothing here may capture the pointer except the cards themselves: the
+   chart panels' own gear and x sit at their top-right corners, directly
+   underneath, and an overlay that swallows clicks over its empty space
+   makes them unreachable. So the boxes are transparent to the pointer
+   and only what is actually drawn takes it back. align-items keeps the
+   column its content's height rather than stretching it down the whole
+   workspace, which is what made the dead zone so large. */
 .marker-overlay {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  /* clear of the panels' header row: 12px of grid padding plus the ~24px
+     the header occupies (an 11px line box, 4px padding either side and a
+     border). Starting level with the panels instead would put the first
+     card straight on top of the top-right panel's gear and x. */
+  top: 44px;
+  right: 0;
   bottom: 12px;
   z-index: 5;
   display: flex;
+  align-items: flex-start;
   pointer-events: none;
-  overflow: hidden;
 }
 
 .marker-cards {
@@ -623,13 +635,20 @@ textarea.input {
   flex-direction: column;
   gap: 6px;
   width: 210px;
+  max-height: 100%;
+  margin-right: 12px;
   overflow-y: auto;
-  pointer-events: auto;
+  pointer-events: none;
   scrollbar-width: thin;
+}
+
+.marker-overlay.collapsed .marker-cards {
+  display: none;
 }
 
 .marker-card {
   padding: 5px 7px;
+  pointer-events: auto;
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   border: 1px solid var(--panel-border);
   border-left: 3px solid var(--accent);
@@ -729,11 +748,61 @@ textarea.input {
   padding: 1px 0;
   font: inherit;
   font-size: 14px;
+  pointer-events: auto;
   color: var(--muted);
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   border: 1px dashed var(--panel-border);
   border-radius: 6px;
   cursor: pointer;
+}
+
+/* The handle that folds the readouts away into the edge.
+
+   Pinned to the workspace's true right edge, where it clears everything:
+   the charts stop 12px short of it, and a panel's gear and x stop 18px
+   short, so 14px of tab covers no control at all. Centred vertically to
+   stay off the header row and the resize grips at the cards' corners.
+
+   Unlike the overlay's other chrome this is not hover-revealed -- a
+   control that only appears when the pointer is over the thing it hides
+   cannot be found once that thing is hidden. It rests faint instead. */
+.marker-collapse {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 14px;
+  padding: 6px 0;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: auto;
+  opacity: 0.45;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--panel-border);
+  border-right: none;
+  border-radius: 5px 0 0 5px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.marker-collapse:hover,
+.marker-collapse:focus-visible {
+  opacity: 1;
+  color: var(--text);
+}
+
+/* the markers' colours, so a folded overlay still says what is behind it */
+.marker-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
 }
 
 .marker-add:hover {
