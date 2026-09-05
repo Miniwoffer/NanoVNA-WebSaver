@@ -67,6 +67,15 @@ export class VNA {
   static sweepPointsMin = 11;
   static sweepPointsMax = 101;
   static sweepMaxFreqHz = 0;
+  /**
+   * The lowest frequency the hardware will tune to.
+   *
+   * The desktop application never modelled this -- it only ever tracked
+   * the upper limit -- but the frequency range bar needs somewhere to
+   * start the scale. 10 kHz is what the NanoVNA family accepts; the few
+   * devices that differ override it.
+   */
+  static sweepMinFreqHz = 10e3;
 
   constructor(transport, { comment = '' } = {}) {
     this.transport = transport;
@@ -80,6 +89,7 @@ export class VNA {
     this.serialNumber = 'NOT SUPPORTED';
     this.hardwareRevision = 'NOT SUPPORTED';
     this.sweepMaxFreqHz = this.constructor.sweepMaxFreqHz;
+    this.sweepMinFreqHz = this.constructor.sweepMinFreqHz;
     this.validDatapoints = [...this.constructor.validDatapoints];
     this.sweepPointsMin = this.constructor.sweepPointsMin;
     this.sweepPointsMax = this.constructor.sweepPointsMax;

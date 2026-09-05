@@ -23,13 +23,14 @@ import { AppState } from './app/state.js';
 import { ChartGrid } from './ui/chartgrid.js';
 import { clear, el } from './ui/dom.js';
 import { deviceMenu } from './ui/device.js';
+import { sweepControls } from './ui/sweep.js';
+import { rangeBar } from './ui/rangebar.js';
 import {
   analysisPanel,
   calibrationPanel,
   displayPanel,
   filesPanel,
   markerPanel,
-  sweepPanel,
   tdrPanel,
 } from './ui/panels.js';
 
@@ -47,7 +48,6 @@ function main() {
   const sidebar = el(
     'aside.sidebar',
     {},
-    sweepPanel(state),
     markerPanel(state),
     calibrationPanel(state),
     filesPanel(state),
@@ -77,12 +77,18 @@ function main() {
       el(
         'header.topbar',
         {},
-        el('div.topbar-left', {}, el('h1.brand', {}, 'NanoVNA-WebSaver')),
+        el(
+          'div.topbar-left',
+          {},
+          el('h1.brand', {}, 'NanoVNA-WebSaver'),
+          sweepControls(state),
+        ),
         el('div.status', {}, statusText, sweepStatus),
         el('div.topbar-right', {}, deviceMenu(state).node),
       ),
       sidebar,
       el('main.workspace', {}, screenshotHolder, chartsContainer),
+      rangeBar(state),
     ),
   );
 

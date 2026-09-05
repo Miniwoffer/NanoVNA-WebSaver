@@ -54,10 +54,11 @@ body {
 .layout {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
     'topbar topbar'
-    'sidebar workspace';
+    'sidebar workspace'
+    'rangebar rangebar';
   height: 100vh;
 }
 
@@ -154,6 +155,123 @@ body {
 
 .menu-heading:first-child {
   margin-top: 0;
+}
+
+/* ---------------------------------------------------- sweep controls */
+
+.sweep-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sweep-controls .btn {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.sweep-controls .progress {
+  width: 90px;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.sweep-controls .progress.running {
+  opacity: 1;
+}
+
+/* -------------------------------------------------------- range bar */
+
+.range-bar {
+  grid-area: rangebar;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px 10px;
+  background: var(--panel);
+  border-top: 1px solid var(--panel-border);
+}
+
+.range-lane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.range-track {
+  position: relative;
+  height: 20px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 5px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+/* the swept part of the device's range, thicker than the track it sits
+   on so it reads as the thing you grab */
+.range-span {
+  position: absolute;
+  top: -3px;
+  height: 26px;
+  min-width: 4px;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  cursor: grab;
+}
+
+.range-bar.dragging .range-span {
+  cursor: grabbing;
+}
+
+.range-handle {
+  position: absolute;
+  top: -2px;
+  width: 10px;
+  height: 30px;
+  cursor: ew-resize;
+}
+
+.range-start {
+  left: -5px;
+}
+
+.range-stop {
+  right: -5px;
+}
+
+.range-handle::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 4px;
+  width: 2px;
+  height: 18px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+.range-ticks {
+  position: relative;
+  height: 14px;
+  margin-top: 4px;
+}
+
+.range-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.range-readout {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .status {
@@ -724,7 +842,8 @@ textarea.input {
     grid-template-areas:
       'topbar'
       'sidebar'
-      'workspace';
+      'workspace'
+      'rangebar';
     height: auto;
     min-height: 100vh;
   }
@@ -732,6 +851,15 @@ textarea.input {
   .sidebar {
     border-right: none;
     border-bottom: 1px solid var(--panel-border);
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  /* the readout would push the track down to nothing on a phone */
+  .range-readout {
+    display: none;
   }
 
   .chart-grid {

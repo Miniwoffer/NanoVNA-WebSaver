@@ -21,4 +21,5 @@ web-serve:
 web-test:
 	node web/tests/run.js \
 	  ./core.test.js ./numeric.test.js ./analysis.test.js \
-	  ./device.test.js ./sweep.test.js ./panels.test.js ./charts.test.js
+	  ./device.test.js ./sweep.test.js ./panels.test.js ./charts.test.js \
+	  ./rangebar.test.js
