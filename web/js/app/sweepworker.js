@@ -203,6 +203,9 @@ export class SweepWorker {
         // let the browser paint between segments
         await sleep(0);
       }
+      // one pass over every segment is one complete sweep; the recorder
+      // wants those, not the partial data each segment leaves behind
+      if (!this._stop) this.host.onSweepPass?.();
       if (sweep.properties.mode !== SweepMode.CONTINOUS || this._stop) return sweep;
       this.#adoptSweep();
     }

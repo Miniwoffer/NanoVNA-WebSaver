@@ -312,14 +312,63 @@ body {
 
 /* -------------------------------------------------------- range bar */
 
-.range-bar {
+.bottom-bar {
   grid-area: rangebar;
+  background: var(--panel);
+  border-top: 1px solid var(--panel-border);
+}
+
+.range-bar {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 8px 16px 10px;
-  background: var(--panel);
-  border-top: 1px solid var(--panel-border);
+}
+
+/* only on screen once there is a recording to scrub */
+.replay-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.replay-bar[hidden] {
+  display: none;
+}
+
+.replay-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.replay-bar .btn {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* .input is width: 100%, which in this flex row would swallow the
+   scrubber; the speed picker takes only what it needs */
+.replay-bar .input {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.replay-scrub {
+  flex: 1 1 auto;
+  min-width: 120px;
+  accent-color: var(--accent);
+}
+
+.replay-readout {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .range-lane {

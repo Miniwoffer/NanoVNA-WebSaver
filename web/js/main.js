@@ -26,6 +26,7 @@ import { deviceMenu } from './ui/device.js';
 import { sweepControls } from './ui/sweep.js';
 import { rangeBar } from './ui/rangebar.js';
 import { markerOverlay } from './ui/markers.js';
+import { recordingControls } from './ui/recording.js';
 import { analysisMenu, displayMenu, filesMenu, tdrMenu } from './ui/panels.js';
 
 const VERSION = '1.0.0';
@@ -35,6 +36,8 @@ function main() {
 
   const chartsContainer = el('div.chart-grid');
   const chartGrid = new ChartGrid(state, chartsContainer);
+
+  const recording = recordingControls(state);
 
   const statusText = el('span.status-text', {}, state.status);
   const sweepStatus = el('span.status-sweep');
@@ -57,6 +60,7 @@ function main() {
           analysisMenu(state).node,
           tdrMenu(state).node,
           displayMenu(state, chartGrid).node,
+          recording.node,
         ),
         el('div.status', {}, statusText, sweepStatus),
         el('div.topbar-right', {}, deviceMenu(state).node),
@@ -69,7 +73,7 @@ function main() {
         el('div.workspace-scroll', {}, screenshotHolder, chartsContainer),
         markerOverlay(state),
       ),
-      rangeBar(state),
+      el('footer.bottom-bar', {}, recording.bar, rangeBar(state)),
     ),
   );
 

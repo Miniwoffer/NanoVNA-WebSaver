@@ -286,6 +286,11 @@ export class AppState extends Emitter {
     this.emit('sweepState', { running: this.worker.running, percentage });
   }
 
+  /** The worker finished a complete pass over every segment. */
+  onSweepPass() {
+    this.emit('sweepPass', this.data);
+  }
+
   onSweepError(message) {
     this.setStatus(message.split('\n')[0]);
     this.emit('error', message);
