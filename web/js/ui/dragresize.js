@@ -22,6 +22,11 @@
 // The card's own current size at drag-start calibrates one column's and
 // one row's pixel size, so this works regardless of how the grid actually
 // laid things out.
+//
+// As in dragreorder.js, the move and release listeners live on `window`:
+// the handle is a 16px corner grip that the pointer leaves immediately,
+// and pointer capture proved unreliable here -- without this the drag
+// showed its outline but never actually resized anything.
 
 import { MAX_ROW_SPAN, clampSpan } from '../charts/registry.js';
 
@@ -32,7 +37,6 @@ import { MAX_ROW_SPAN, clampSpan } from '../charts/registry.js';
  * @param {{columns: number, onCommit: (colSpan: number, rowSpan: number) => void}} options
  */
 export function attachPanelResize(handleEl, cardEl, { columns, onCommit }) {
-  let dragging = false;
   let pointerId = null;
   let startX = 0;
   let startY = 0;
@@ -43,37 +47,22 @@ export function attachPanelResize(handleEl, cardEl, { columns, onCommit }) {
   let colSpan = 1;
   let rowSpan = 1;
 
-  handleEl.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) return;
-    dragging = true;
-    pointerId = event.pointerId;
-    handleEl.setPointerCapture?.(pointerId);
-    const cardRect = cardEl.getBoundingClientRect();
-    startColSpan = colSpan = Number(cardEl.dataset.colSpan) || 1;
-    startRowSpan = rowSpan = Number(cardEl.dataset.rowSpan) || 1;
-    colWidth = cardRect.width / startColSpan;
-    rowHeight = cardRect.height / startRowSpan;
-    startX = event.clientX;
-    startY = event.clientY;
-    cardEl.classList.add('resizing');
-    event.preventDefault();
-    event.stopPropagation();
-  });
-
-  handleEl.addEventListener('pointermove', (event) => {
-    if (!dragging || event.pointerId !== pointerId) return;
+  const onMove = (event) => {
+    if (event.pointerId !== pointerId) return;
     const dx = event.clientX - startX;
     const dy = event.clientY - startY;
     colSpan = clampSpan(startColSpan + Math.round(dx / colWidth), columns);
     rowSpan = clampSpan(startRowSpan + Math.round(dy / rowHeight), MAX_ROW_SPAN);
     cardEl.style.gridColumn = `span ${colSpan}`;
     cardEl.style.gridRow = `span ${rowSpan}`;
-  });
+  };
 
   const finish = (event) => {
-    if (!dragging || event.pointerId !== pointerId) return;
-    dragging = false;
+    if (event.pointerId !== pointerId) return;
     pointerId = null;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', finish);
+    window.removeEventListener('pointercancel', finish);
     cardEl.classList.remove('resizing');
     if (colSpan !== startColSpan || rowSpan !== startRowSpan) {
       cardEl.dataset.colSpan = String(colSpan);
@@ -82,6 +71,21 @@ export function attachPanelResize(handleEl, cardEl, { columns, onCommit }) {
     }
   };
 
-  handleEl.addEventListener('pointerup', finish);
-  handleEl.addEventListener('pointercancel', finish);
+  handleEl.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || pointerId !== null) return;
+    pointerId = event.pointerId;
+    const cardRect = cardEl.getBoundingClientRect();
+    startColSpan = colSpan = Number(cardEl.dataset.colSpan) || 1;
+    startRowSpan = rowSpan = Number(cardEl.dataset.rowSpan) || 1;
+    colWidth = cardRect.width / startColSpan;
+    rowHeight = cardRect.height / startRowSpan;
+    startX = event.clientX;
+    startY = event.clientY;
+    cardEl.classList.add('resizing');
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+    event.preventDefault();
+    event.stopPropagation();
+  });
 }
