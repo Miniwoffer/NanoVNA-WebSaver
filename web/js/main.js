@@ -26,12 +26,7 @@ import { deviceMenu } from './ui/device.js';
 import { sweepControls } from './ui/sweep.js';
 import { rangeBar } from './ui/rangebar.js';
 import { markerOverlay } from './ui/markers.js';
-import {
-  analysisPanel,
-  displayPanel,
-  filesPanel,
-  tdrPanel,
-} from './ui/panels.js';
+import { analysisMenu, displayMenu, filesMenu, tdrMenu } from './ui/panels.js';
 
 const VERSION = '1.0.0';
 
@@ -43,27 +38,6 @@ function main() {
 
   const statusText = el('span.status-text', {}, state.status);
   const sweepStatus = el('span.status-sweep');
-
-  const sidebar = el(
-    'aside.sidebar',
-    {},
-    filesPanel(state),
-    analysisPanel(state),
-    tdrPanel(state),
-    displayPanel(state, chartGrid),
-    el(
-      'p.about',
-      {},
-      `NanoVNA-WebSaver ${VERSION}. `,
-      el('a', {
-        href: 'https://github.com/NanoVNA-Saver/nanovna-saver',
-        target: '_blank',
-        rel: 'noreferrer noopener',
-        textContent: 'Project page',
-      }),
-      '. Licensed under the GNU GPL v3 or later.',
-    ),
-  );
 
   const screenshotHolder = el('div.screenshot', { hidden: true });
 
@@ -79,11 +53,14 @@ function main() {
           {},
           el('h1.brand', {}, 'NanoVNA-WebSaver'),
           sweepControls(state),
+          filesMenu(state).node,
+          analysisMenu(state).node,
+          tdrMenu(state).node,
+          displayMenu(state, chartGrid).node,
         ),
         el('div.status', {}, statusText, sweepStatus),
         el('div.topbar-right', {}, deviceMenu(state).node),
       ),
-      sidebar,
       el(
         'main.workspace',
         {},

@@ -20,6 +20,7 @@
 // The sidebar panels: the same controls the desktop application keeps in
 // its docks and dialogs.
 
+import { menuButton } from './menu.js';
 import {
   button,
   checkbox,
@@ -28,7 +29,6 @@ import {
   el,
   field,
   numberInput,
-  panel,
   pickFile,
   readFileAsText,
   select,
@@ -52,9 +52,8 @@ function guard(state, action) {
 
 // -------------------------------------------------------------- files
 
-export function filesPanel(state) {
-  const node = panel(
-    'Files',
+export function filesMenu(state) {
+  const contents = [
     el(
       'div.row',
       {},
@@ -102,8 +101,12 @@ export function filesPanel(state) {
       button('Clear reference', () => state.clearReference()),
       button('Clear sweep', () => state.clearData()),
     ),
-  );
-  return node;
+  ];
+  return menuButton({
+    label: 'Files',
+    title: 'Load and save Touchstone data',
+    render: () => contents,
+  });
 }
 
 function safeName(name) {
@@ -113,9 +116,8 @@ function safeName(name) {
 
 // ------------------------------------------------------------ display
 
-export function displayPanel(state, chartGrid) {
-  const node = panel(
-    'Display',
+export function displayMenu(state, chartGrid) {
+  const contents = [
     field(
       'Theme',
       select(
@@ -172,14 +174,18 @@ export function displayPanel(state, chartGrid) {
         chartGrid.applyBands();
       }),
     ),
-  );
+  ];
 
-  return node;
+  return menuButton({
+    label: 'Display',
+    title: 'Theme, columns and trace options',
+    render: () => contents,
+  });
 }
 
 // ----------------------------------------------------------- analysis
 
-export function analysisPanel(state) {
+export function analysisMenu(state) {
   const chooser = select(
     ANALYSES.map((a) => [a.key, a.name]),
     ANALYSES[0].key,
@@ -278,8 +284,7 @@ export function analysisPanel(state) {
     state.setAnalysisResult(result);
   };
 
-  const node = panel(
-    'Analysis',
+  const contents = [
     field('Analysis', chooser),
     optionsBox,
     el('div.row', {}, button('Run', run, { variant: 'primary' }),
@@ -288,15 +293,19 @@ export function analysisPanel(state) {
          state.setAnalysisResult(null);
        })),
     results,
-  );
+  ];
 
   renderOptions();
-  return node;
+  return menuButton({
+    label: 'Analysis',
+    title: 'Run an analysis over the sweep',
+    render: () => contents,
+  });
 }
 
 // ---------------------------------------------------------------- TDR
 
-export function tdrPanel(state) {
+export function tdrMenu(state) {
   const result = el('div.info');
 
   const velocitySelect = select(
@@ -316,8 +325,7 @@ export function tdrPanel(state) {
     state.updateSettings({ tdr: { ...state.settings.tdr, velocityFactor } });
   }, { min: 0.01, max: 1, step: 0.01 });
 
-  const node = panel(
-    'Time domain',
+  const contents = [
     field('Cable', velocitySelect),
     field('Velocity factor', velocityInput),
     field(
@@ -335,7 +343,7 @@ export function tdrPanel(state) {
       ),
     ),
     result,
-  );
+  ];
 
   const render = () => {
     clear(result);
@@ -352,5 +360,9 @@ export function tdrPanel(state) {
 
   state.on('tdr', render);
   render();
-  return node;
+  return menuButton({
+    label: 'Time domain',
+    title: 'Time domain reflectometry',
+    render: () => contents,
+  });
 }

@@ -121,23 +121,6 @@ export function checkbox(label, checked, onChange) {
   return el('label.check', {}, input, el('span', {}, label));
 }
 
-/** A collapsible section of the sidebar. */
-export function panel(title, ...children) {
-  const body = el('div.panel-body', {}, ...children);
-  const node = el(
-    'section.panel',
-    {},
-    el('h2.panel-title', {
-      on: {
-        click: () => node.classList.toggle('collapsed'),
-      },
-    }, title),
-    body,
-  );
-  node.body = body;
-  return node;
-}
-
 /** Read a file the user picked, as text. */
 export function readFileAsText(file) {
   return new Promise((resolve, reject) => {
