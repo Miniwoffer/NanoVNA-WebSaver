@@ -207,10 +207,6 @@ export class PolarChart extends Chart {
     }
     return best ? best.freq : null;
   }
-
-  resetZoom() {
-    // there is no frequency axis to zoom
-  }
 }
 
 export class SmithChart extends PolarChart {

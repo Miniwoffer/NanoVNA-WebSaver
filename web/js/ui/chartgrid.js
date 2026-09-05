@@ -147,7 +147,6 @@ export class ChartGrid {
       chart.attach(canvas);
       chart.onMarkerMove = (index, freq) => this.state.setMarkerFrequency(index, freq);
       chart.onZoom = (start, end) => {
-        if (start === null) return; // a double click resets the sweep span
         try {
           this.state.updateSweep({ start, end });
         } catch (error) {
@@ -189,12 +188,6 @@ export class ChartGrid {
       el(
         'div.chart-card-header-actions',
         {},
-        el('button.chart-action', {
-          type: 'button',
-          textContent: 'Reset zoom',
-          title: 'Show the whole sweep again',
-          on: { click: () => this.state.emit('resetZoom') },
-        }),
         editButton,
         removeButton,
       ),

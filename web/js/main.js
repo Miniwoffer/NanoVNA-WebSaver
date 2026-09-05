@@ -100,14 +100,6 @@ function main() {
     setTimeout(() => statusText.classList.remove('error'), 4000);
   });
 
-  state.on('resetZoom', () => {
-    // put the sweep span back to what the data covers
-    const { s11 } = state.data;
-    if (s11.length > 1) {
-      state.updateSweep({ start: s11[0].freq, end: s11[s11.length - 1].freq });
-    }
-  });
-
   // the device's own screen, when it can send one
   state.on('screenshot', (image) => {
     clear(screenshotHolder);

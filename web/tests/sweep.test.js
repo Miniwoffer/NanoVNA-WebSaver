@@ -184,6 +184,58 @@ describe('sweep worker', () => {
     assert.equal(worker.running, false);
   });
 
+  it('picks up a new range mid-run without being restarted', async () => {
+    const device = new StubDevice();
+    const sweep = new Sweep({ start: 1000000, end: 2000000, points: 11, segments: 1 });
+    sweep.setMode(SweepMode.CONTINOUS);
+    const host = makeHost(device, sweep);
+    const worker = new SweepWorker(host);
+
+    const original = host.saveData.bind(host);
+    let passes = 0;
+    host.saveData = (s11, s21) => {
+      original(s11, s21);
+      passes += 1;
+      // retune after the first pass, exactly as the sweep controls, the
+      // range bar or a zoom drag on a chart would
+      if (passes === 1) host.sweep.update(5000000, 6000000, 1, 11);
+      if (passes >= 3) worker.stop();
+    };
+
+    await worker.start();
+
+    assert.equal(host.events.errors.length, 0, host.events.errors[0]);
+    assert.equal(worker.data11[0].freq, 5000000, 'the data followed the new range');
+    assert.equal(worker.data11[worker.data11.length - 1].freq, 6000000);
+    const [start, stop] = device.sweeps[device.sweeps.length - 1];
+    assert.equal(start, 5000000, 'the device was retuned too');
+    assert.equal(stop, 6000000);
+  });
+
+  it('does not wipe the traces when only the sweep name changes', async () => {
+    const device = new StubDevice();
+    const sweep = new Sweep({ start: 1000000, end: 2000000, points: 11, segments: 1 });
+    sweep.setMode(SweepMode.CONTINOUS);
+    const host = makeHost(device, sweep);
+    const worker = new SweepWorker(host);
+
+    const original = host.saveData.bind(host);
+    let passes = 0;
+    let zeroedAfterRename = false;
+    host.saveData = (s11, s21) => {
+      original(s11, s21);
+      passes += 1;
+      if (passes === 1) host.sweep.setName('renamed');
+      // the rename must not have reset the buffers to zero
+      if (passes === 2) zeroedAfterRename = s11.every((dp) => dp.re === 0);
+      if (passes >= 2) worker.stop();
+    };
+
+    await worker.start();
+    assert.equal(zeroedAfterRename, false);
+    assert.equal(worker.sweep.properties.name, 'renamed', 'the rename was still adopted');
+  });
+
   it('retries a failed read and reconnects', async () => {
     const device = new StubDevice({ fail: 2 });
     const sweep = new Sweep({ start: 1000000, end: 2000000, points: 11, segments: 1 });

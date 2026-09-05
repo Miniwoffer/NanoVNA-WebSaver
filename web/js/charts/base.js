@@ -360,9 +360,14 @@ export class Chart {
     // charts that show a readout under the cursor override this
   }
 
-  resetZoom() {
-    if (this.onZoom) this.onZoom(null, null);
-  }
+  /**
+   * Undo a chart-local zoom, on a double click.
+   *
+   * Most charts have none: the frequency axis follows the sweep, and the
+   * way back out from a zoomed span is the frequency range bar, not a
+   * chart. Only the TDR chart, whose length axis is its own, overrides it.
+   */
+  resetZoom() {}
 
   /** Draw a marker as a downward pointing triangle. */
   drawMarkerGlyph(ctx, x, y, color, label) {

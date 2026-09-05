@@ -143,13 +143,9 @@ export class SweepWorker {
     }
 
     this.percentage = 0;
-    const sweep = this.host.sweep.copy();
-    if (!this.sweep || !sweep.equals(this.sweep)) {
-      this.sweep = sweep;
-      this.initData();
-    }
+    this.#adoptSweep();
 
-    await this.#runLoop(device, sweep);
+    const sweep = await this.#runLoop(device);
 
     if (sweep.segments > 1) {
       await device.resetSweep(sweep.start, sweep.end);
@@ -158,11 +154,44 @@ export class SweepWorker {
     this.host.onSweepProgress(this.percentage);
   }
 
-  async #runLoop(device, sweep) {
-    const averages =
-      sweep.properties.mode === SweepMode.AVERAGE ? sweep.properties.averages[0] : 1;
+  /**
+   * Take up whatever range the application is currently asking for.
+   *
+   * The buffers are only rebuilt when the frequency grid itself moves.
+   * Editing the sweep's name or its averaging leaves the points where
+   * they are, and wiping the traces for that would be a visible glitch
+   * for no reason.
+   */
+  #adoptSweep() {
+    const wanted = this.host.sweep.copy();
+    const previous = this.sweep;
+    this.sweep = wanted;
+    const sameGrid =
+      previous &&
+      previous.start === wanted.start &&
+      previous.end === wanted.end &&
+      previous.points === wanted.points &&
+      previous.segments === wanted.segments &&
+      previous.properties.logarithmic === wanted.properties.logarithmic;
+    if (!sameGrid) this.initData();
+  }
 
+  /**
+   * Run passes until asked to stop, returning the sweep of the last one.
+   *
+   * The range is re-read between passes rather than captured once, so
+   * that changing start/stop -- from the sweep controls, the range bar or
+   * a zoom drag on a chart -- reaches a continuous sweep without it having
+   * to be stopped and started again. It is deliberately not re-read
+   * between *segments*: updateData writes at `sweep.points * index`
+   * offsets, so the point count must stay put for the whole pass.
+   */
+  async #runLoop(device) {
     for (;;) {
+      const { sweep } = this;
+      const averages =
+        sweep.properties.mode === SweepMode.AVERAGE ? sweep.properties.averages[0] : 1;
+
       for (let i = 0; i < sweep.segments; i += 1) {
         if (this._stop) break;
         const [start, stop] = sweep.getIndexRange(i);
@@ -174,7 +203,8 @@ export class SweepWorker {
         // let the browser paint between segments
         await sleep(0);
       }
-      if (sweep.properties.mode !== SweepMode.CONTINOUS || this._stop) break;
+      if (sweep.properties.mode !== SweepMode.CONTINOUS || this._stop) return sweep;
+      this.#adoptSweep();
     }
   }
 
