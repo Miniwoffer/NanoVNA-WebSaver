@@ -56,6 +56,16 @@ export class ChartGrid {
      * reopening the editor after every change */
     this.openEditorPanelId = null;
 
+    /**
+     * Canvases are positioned out of flow so they cannot size their own
+     * panel, which also means nothing else notices when their box
+     * changes -- widening a panel need not change the grid's own size,
+     * so an observer on the container would never fire. Watch each
+     * mini-chart instead; redraws coalesce to one frame anyway.
+     */
+    this.miniObserver =
+      typeof ResizeObserver === 'function' ? new ResizeObserver(() => this.redraw()) : null;
+
     state.on('data', () => this.updateData());
     state.on('reference', () => this.updateData());
     state.on('markers', () => this.applyMarkers());
@@ -94,6 +104,7 @@ export class ChartGrid {
     const reopenId = this.openEditorPanelId;
     for (const entry of this.panels) entry.editor.close();
 
+    this.miniObserver?.disconnect();
     clear(this.container);
     this.charts = [];
     this.panels = [];
@@ -127,23 +138,23 @@ export class ChartGrid {
 
     for (const { chart } of minis) {
       const canvas = el('canvas.chart-canvas');
-      miniRow.append(
+      const mini = el(
+        'div.mini-chart',
+        {},
+        canvas,
         el(
-          'div.mini-chart',
+          'div.chart-actions',
           {},
-          canvas,
-          el(
-            'div.chart-actions',
-            {},
-            el('button.chart-action', {
-              type: 'button',
-              textContent: 'PNG',
-              title: 'Save this chart as an image',
-              on: { click: () => downloadCanvas(`${chart.key}.png`, canvas) },
-            }),
-          ),
+          el('button.chart-action', {
+            type: 'button',
+            textContent: 'PNG',
+            title: 'Save this chart as an image',
+            on: { click: () => downloadCanvas(`${chart.key}.png`, canvas) },
+          }),
         ),
       );
+      miniRow.append(mini);
+      this.miniObserver?.observe(mini);
       chart.attach(canvas);
       chart.onMarkerMove = (index, freq) => this.state.setMarkerFrequency(index, freq);
       chart.onZoom = (start, end) => {

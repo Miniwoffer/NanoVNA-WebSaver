@@ -897,11 +897,15 @@ textarea.input {
   padding: 12px;
 }
 
+/* One row is one panel tall. This is now the only thing deciding a
+   panel's height: with the canvas out of flow, nothing inside a card
+   can push it taller, so the number here is the chart size rather than
+   a floor that the content happened to exceed. */
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-flow: dense;
-  grid-auto-rows: minmax(220px, auto);
+  grid-auto-rows: minmax(300px, auto);
   gap: 12px;
 }
 
@@ -911,7 +915,7 @@ textarea.input {
   flex-direction: column;
   margin: 0;
   min-width: 0;
-  min-height: 220px;
+  min-height: 300px;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
@@ -971,8 +975,24 @@ textarea.input {
   min-height: 160px;
 }
 
+/* Absolutely positioned, so the canvas fills its mini-chart without
+   being able to size it.
+
+   In flow with height: 100%, the percentage resolves against a parent
+   whose own height comes from its content -- so it resolves to auto and
+   the canvas falls back to its backing store as its intrinsic height.
+   Chart#resize then writes the laid-out height straight back into that
+   backing store, and the two ratchet each other upward: every resize
+   made a panel about half as tall again, with no way to shrink it back
+   short of rebuilding the grid. */
 .chart-canvas {
+  position: absolute;
+  inset: 0;
   display: block;
+  /* a canvas is a replaced element, so insets alone leave it at its
+     intrinsic 300x150 -- it still needs to be told to fill. Out of flow
+     these percentages are safe: they resolve against the mini-chart's
+     height without contributing anything back to it. */
   width: 100%;
   height: 100%;
   touch-action: none;
