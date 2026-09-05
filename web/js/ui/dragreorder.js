@@ -20,6 +20,13 @@
 // Drag-to-reorder for chart-grid panels: dragging a panel's header handle
 // swaps DOM nodes live (cheap -- no chart instance is touched mid-drag)
 // and only asks the caller to persist the new order once, on drop.
+//
+// The move and release listeners live on `window` rather than on the
+// handle, deliberately. Pointer capture cannot be relied on here: this
+// drag reorders the DOM, and moving an element releases the capture its
+// subtree holds, so the first successful reorder would silently end the
+// drag -- leaving the card stuck in its half-transparent dragging state
+// and never committing the new order.
 
 /**
  * @param {HTMLElement} handleEl the drag handle inside the panel's header
@@ -30,23 +37,13 @@
  *   `container.children`.
  */
 export function attachPanelDrag(handleEl, cardEl, { container, onDrop }) {
-  let dragging = false;
   let pointerId = null;
 
   const cardsExcept = () =>
     [...container.children].filter((node) => node !== cardEl && node.classList.contains('chart-card'));
 
-  handleEl.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) return;
-    dragging = true;
-    pointerId = event.pointerId;
-    handleEl.setPointerCapture?.(pointerId);
-    cardEl.classList.add('dragging');
-    event.preventDefault();
-  });
-
-  handleEl.addEventListener('pointermove', (event) => {
-    if (!dragging || event.pointerId !== pointerId) return;
+  const onMove = (event) => {
+    if (event.pointerId !== pointerId) return;
     const target = cardsExcept().find((node) => {
       const rect = node.getBoundingClientRect();
       return (
@@ -60,16 +57,25 @@ export function attachPanelDrag(handleEl, cardEl, { container, onDrop }) {
     const rect = target.getBoundingClientRect();
     const before = event.clientX < rect.left + rect.width / 2;
     container.insertBefore(cardEl, before ? target : target.nextSibling);
-  });
+  };
 
   const finish = (event) => {
-    if (!dragging || event.pointerId !== pointerId) return;
-    dragging = false;
+    if (event.pointerId !== pointerId) return;
     pointerId = null;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', finish);
+    window.removeEventListener('pointercancel', finish);
     cardEl.classList.remove('dragging');
     onDrop();
   };
 
-  handleEl.addEventListener('pointerup', finish);
-  handleEl.addEventListener('pointercancel', finish);
+  handleEl.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || pointerId !== null) return;
+    pointerId = event.pointerId;
+    cardEl.classList.add('dragging');
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+    event.preventDefault();
+  });
 }
