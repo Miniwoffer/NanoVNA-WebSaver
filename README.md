@@ -1,7 +1,7 @@
 This is just a lazy vibe coded web port of the amazing [nanovna-saver](https://github.com/NanoVNA-Saver/nanovna-saver) project!
 I wanted something running in the browser while playing with my NanoVNA-H4!
 
-Too try it out go too: https://miniwoffer.github.io/NanoVNA-WebSaver/
+Try it out at: https://miniwoffer.github.io/NanoVNA-WebSaver/
 
 # NanoVNA-WebSaver
 
