@@ -69,16 +69,91 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 18px;
+  padding: 8px 14px;
   background: var(--panel);
   border-bottom: 1px solid var(--panel-border);
 }
 
+.topbar-left,
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .brand {
-  margin: 0;
+  margin: 0 6px 0 0;
   font-size: 16px;
   font-weight: 650;
   letter-spacing: 0.01em;
+}
+
+/* ------------------------------------------------------------- menus */
+
+.menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.menu-button:hover,
+.menu-button[aria-expanded='true'] {
+  background: var(--input-bg);
+  border-color: var(--input-border);
+}
+
+/* the device control earns a border of its own: it is the one thing in
+   the bar whose state the user needs to be able to read at a glance */
+.menu-device {
+  border-color: var(--input-border);
+}
+
+.menu-device.connected {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.menu-label {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon {
+  flex: 0 0 auto;
+}
+
+.menu-popover .field {
+  margin: 0;
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.menu-heading {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.menu-heading:first-child {
+  margin-top: 0;
 }
 
 .status {
