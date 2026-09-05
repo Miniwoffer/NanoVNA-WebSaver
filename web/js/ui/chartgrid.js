@@ -42,6 +42,7 @@ import {
 import { computeTDR } from '../rf/tdr.js';
 import { attachPanelDrag } from './dragreorder.js';
 import { attachPanelResize } from './dragresize.js';
+import { popover } from './popover.js';
 
 export class ChartGrid {
   constructor(state, container) {
@@ -88,6 +89,11 @@ export class ChartGrid {
 
   /** Recreate every panel and mini-chart from the saved layout. */
   rebuild() {
+    // a popover lives on the body, not inside its card, so tearing the
+    // cards down would otherwise leave it stranded on screen
+    const reopenId = this.openEditorPanelId;
+    for (const entry of this.panels) entry.editor.close();
+
     clear(this.container);
     this.charts = [];
     this.panels = [];
@@ -100,6 +106,13 @@ export class ChartGrid {
     }
     for (const entry of this.panels) this.container.append(entry.cardEl);
     this.container.append(this.#addPanelTile());
+
+    // an edit that changes a panel's layers rebuilds the whole grid; put
+    // the editor back up afterwards so several edits in a row do not mean
+    // reopening it after every one. Only once the card is in the document,
+    // since the popover measures its anchor to place itself.
+    const reopen = this.panels.find((entry) => entry.panel.id === reopenId);
+    if (reopen) reopen.editor.open();
 
     this.applyTheme();
     this.applyStyle();
@@ -157,13 +170,16 @@ export class ChartGrid {
       on: { click: () => this.removePanel(panelData.id) },
     });
 
-    const editor = this.#panelEditor(panelData);
-    editButton.addEventListener('click', () => {
-      const opening = editor.node.hidden;
-      editor.node.hidden = !opening;
-      this.openEditorPanelId = opening ? panelData.id : null;
+    const editor = popover(editButton, () => this.#editorBody(panelData.id), {
+      align: 'right',
+      className: 'panel-editor',
+      onOpen: () => {
+        this.openEditorPanelId = panelData.id;
+      },
+      onClose: () => {
+        if (this.openEditorPanelId === panelData.id) this.openEditorPanelId = null;
+      },
     });
-    editor.node.hidden = this.openEditorPanelId !== panelData.id;
 
     const header = el(
       'div.chart-card-header',
@@ -193,7 +209,6 @@ export class ChartGrid {
       },
       header,
       miniRow,
-      editor.node,
       resizeHandle,
     );
 
@@ -223,115 +238,130 @@ export class ChartGrid {
     );
   }
 
-  /** The inline layer/axis editor appended to the end of a panel's card. */
-  #panelEditor(initialPanel) {
-    const container = el('div.panel-editor', { hidden: true });
-    let panelData = initialPanel;
+  /**
+   * The contents of a panel's settings popover.
+   *
+   * The panel is looked up from state on every render rather than closed
+   * over, because every edit replaces the panel object in `settings.layout`
+   * -- a captured reference would go stale after the first change.
+   */
+  #editorBody(panelId) {
+    const panelData = this.state.settings.layout.find((p) => p.id === panelId);
+    if (!panelData) return [];
+    const rows = [];
 
-    const render = () => {
-      clear(container);
-
-      panelData.layers.forEach((layer, index) => {
-        const definition = CHART_TYPES_BY_KEY.get(layer.chartKey);
-        const isFrequency = definition?.kind === 'frequency';
-        container.append(
-          el(
-            'div.panel-editor-row',
-            {},
-            el('span.panel-editor-name', {}, definition?.name ?? layer.chartKey),
-            isFrequency
-              ? select(
-                  [['left', 'Left axis'], ['right', 'Right axis']],
-                  layer.axis,
-                  (event) => {
-                    const layers = panelData.layers.map((l, i) =>
-                      i === index ? { ...l, axis: event.target.value } : l);
-                    this.updatePanelLayers(panelData.id, layers);
-                  },
-                )
-              : null,
-            button('Remove', () => {
-              const layers = panelData.layers.filter((_, i) => i !== index);
-              if (layers.length) this.updatePanelLayers(panelData.id, layers);
-              else this.removePanel(panelData.id);
-            }, { variant: 'danger' }),
-          ),
-        );
-      });
-
-      const addSelect = select(
-        CHART_TYPES.map((t) => [t.key, `${t.group}: ${t.name}`]),
-        CHART_TYPES[0].key,
-      );
-      container.append(
+    rows.push(el('div.panel-editor-heading', {}, 'Layers'));
+    panelData.layers.forEach((layer, index) => {
+      const definition = CHART_TYPES_BY_KEY.get(layer.chartKey);
+      const isFrequency = definition?.kind === 'frequency';
+      rows.push(
         el(
           'div.panel-editor-row',
           {},
-          addSelect,
-          button('Add layer', () => {
-            const chartKey = addSelect.value;
-            const definition = CHART_TYPES_BY_KEY.get(chartKey);
-            const alreadyHasTdr = panelData.layers.some(
-              (l) => CHART_TYPES_BY_KEY.get(l.chartKey)?.kind === 'tdr',
-            );
-            if (definition?.kind === 'tdr' && alreadyHasTdr) {
-              this.state.setStatus('A panel can only show one TDR chart.');
-              return;
-            }
-            const axis = defaultAxisFor(panelData, chartKey);
-            this.updatePanelLayers(panelData.id, [...panelData.layers, { chartKey, axis }]);
+          el('span.panel-editor-name', {}, definition?.name ?? layer.chartKey),
+          isFrequency
+            ? select(
+                [['left', 'Left'], ['right', 'Right']],
+                layer.axis,
+                (event) => {
+                  const layers = panelData.layers.map((l, i) =>
+                    i === index ? { ...l, axis: event.target.value } : l);
+                  this.updatePanelLayers(panelId, layers);
+                },
+                { title: 'Which Y axis this layer is drawn against', class: 'panel-editor-axis' },
+              )
+            : el('span.panel-editor-note', {}, definition?.kind ?? ''),
+          el('button.chart-action', {
+            type: 'button',
+            textContent: '×',
+            title: 'Remove this layer',
+            on: {
+              click: () => {
+                const layers = panelData.layers.filter((_, i) => i !== index);
+                if (layers.length) this.updatePanelLayers(panelId, layers);
+                else this.removePanel(panelId);
+              },
+            },
           }),
         ),
       );
+    });
 
-      const frequencyAxes = new Set(
-        panelData.layers
-          .filter((l) => CHART_TYPES_BY_KEY.get(l.chartKey)?.kind === 'frequency')
-          .map((l) => l.axis),
-      );
-      for (const side of ['left', 'right']) {
-        if (!frequencyAxes.has(side)) continue;
-        const limits = panelData.axisLimits[side];
-        container.append(
-          el(
-            'div.panel-editor-row',
-            {},
-            checkbox(`Fixed range (${side})`, limits.mode === 'fixed', (event) => {
-              this.updatePanelAxisLimits(panelData.id, {
-                [side]: { ...limits, mode: event.target.checked ? 'fixed' : 'auto' },
-              });
-            }),
-            numberInput(limits.min, (event) => {
-              this.updatePanelAxisLimits(panelData.id, {
-                [side]: { ...panelData.axisLimits[side], min: Number(event.target.value) || 0 },
-              });
-            }, { step: 'any', disabled: limits.mode !== 'fixed' }),
-            numberInput(limits.max, (event) => {
-              this.updatePanelAxisLimits(panelData.id, {
-                [side]: { ...panelData.axisLimits[side], max: Number(event.target.value) || 0 },
-              });
-            }, { step: 'any', disabled: limits.mode !== 'fixed' }),
-          ),
-        );
-      }
+    const addSelect = select(
+      CHART_TYPES.map((t) => [t.key, `${t.group}: ${t.name}`]),
+      CHART_TYPES[0].key,
+    );
+    rows.push(
+      el(
+        'div.panel-editor-row',
+        {},
+        addSelect,
+        button('Add', () => {
+          const chartKey = addSelect.value;
+          const definition = CHART_TYPES_BY_KEY.get(chartKey);
+          const alreadyHasTdr = panelData.layers.some(
+            (l) => CHART_TYPES_BY_KEY.get(l.chartKey)?.kind === 'tdr',
+          );
+          if (definition?.kind === 'tdr' && alreadyHasTdr) {
+            this.state.setStatus('A panel can only show one TDR chart.');
+            return;
+          }
+          const axis = defaultAxisFor(panelData, chartKey);
+          this.updatePanelLayers(panelId, [...panelData.layers, { chartKey, axis }]);
+        }, { title: 'Add this chart type to the panel' }),
+      ),
+    );
 
-      container.append(
+    const frequencyAxes = new Set(
+      panelData.layers
+        .filter((l) => CHART_TYPES_BY_KEY.get(l.chartKey)?.kind === 'frequency')
+        .map((l) => l.axis),
+    );
+    for (const side of ['left', 'right']) {
+      if (!frequencyAxes.has(side)) continue;
+      const limits = panelData.axisLimits[side];
+      const fixed = limits.mode === 'fixed';
+      rows.push(el('div.panel-editor-heading', {}, `${side === 'left' ? 'Left' : 'Right'} axis`));
+      rows.push(
         el(
           'div.panel-editor-row',
           {},
-          button('Remove panel', () => this.removePanel(panelData.id), { variant: 'danger' }),
+          checkbox('Fixed range', fixed, (event) => {
+            this.updatePanelAxisLimits(panelId, {
+              [side]: { ...limits, mode: event.target.checked ? 'fixed' : 'auto' },
+            });
+          }),
+          el('span.panel-editor-note', {}, fixed ? '' : 'autoscaling'),
         ),
       );
-    };
+      rows.push(
+        el(
+          'div.panel-editor-row',
+          {},
+          numberInput(limits.min, (event) => {
+            this.updatePanelAxisLimits(panelId, {
+              [side]: { ...panelData.axisLimits[side], min: Number(event.target.value) || 0 },
+            });
+          }, { step: 'any', disabled: !fixed, title: 'Minimum', class: 'panel-editor-limit' }),
+          el('span.panel-editor-note', {}, 'to'),
+          numberInput(limits.max, (event) => {
+            this.updatePanelAxisLimits(panelId, {
+              [side]: { ...panelData.axisLimits[side], max: Number(event.target.value) || 0 },
+            });
+          }, { step: 'any', disabled: !fixed, title: 'Maximum', class: 'panel-editor-limit' }),
+        ),
+      );
+    }
 
-    render();
-    return {
-      node: container,
-      setPanel: (newPanelData) => {
-        panelData = newPanelData;
-        render();
-      },
-    };
+    rows.push(el('div.panel-editor-heading', {}, 'Panel'));
+    rows.push(
+      el(
+        'div.panel-editor-row',
+        {},
+        button('Remove panel', () => this.removePanel(panelId), { variant: 'danger' }),
+      ),
+    );
+    return rows;
   }
 
   /** Read the panel order back out of the DOM after a drag-reorder. */
@@ -397,7 +427,9 @@ export class ChartGrid {
     const entry = this.panels.find((e) => e.panel.id === panelId);
     if (!entry) return;
     entry.panel = layout.find((p) => p.id === panelId);
-    entry.editor.setPanel(entry.panel);
+    // re-render in place so the min/max inputs pick up their new
+    // enabled state; no chart instance changes, so no rebuild is needed
+    entry.editor.refresh();
     for (const { kind, chart } of entry.minis) {
       if (kind === 'frequency') chart.setAxisLimits(entry.panel.axisLimits);
     }

@@ -528,26 +528,73 @@ textarea.input {
   opacity: 0.6;
 }
 
-.panel-editor {
+/* ----------------------------------------------------------- popover */
+
+/* Floating panels are positioned in viewport coordinates and appended to
+   the body, so they escape .chart-card's overflow: hidden. Visibility is
+   the .open class alone -- a `display` rule here would outrank the user
+   agent's [hidden] and leave the popover permanently on screen. */
+.popover {
+  position: fixed;
+  z-index: 50;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px;
-  border-top: 1px solid var(--panel-border);
-  background: var(--panel);
+  min-width: 220px;
+  max-width: min(420px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 10px;
   font-size: 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+}
+
+.panel-editor-heading {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.panel-editor-heading:first-child {
+  margin-top: 0;
 }
 
 .panel-editor-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+}
+
+.panel-editor-row .input {
+  min-width: 0;
 }
 
 .panel-editor-name {
   flex: 1;
-  min-width: 80px;
+  min-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* keep the axis picker narrow so the chart type's name stays readable */
+.panel-editor-axis {
+  flex: 0 0 auto;
+  width: 5.5em;
+}
+
+.panel-editor-note {
+  color: var(--muted);
+}
+
+.panel-editor-limit {
+  width: 5.5em;
+  flex: 0 0 auto;
 }
 
 .chart-card-add {
