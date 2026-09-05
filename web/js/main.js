@@ -27,7 +27,6 @@ import { sweepControls } from './ui/sweep.js';
 import { rangeBar } from './ui/rangebar.js';
 import {
   analysisPanel,
-  calibrationPanel,
   displayPanel,
   filesPanel,
   markerPanel,
@@ -49,7 +48,6 @@ function main() {
     'aside.sidebar',
     {},
     markerPanel(state),
-    calibrationPanel(state),
     filesPanel(state),
     analysisPanel(state),
     tdrPanel(state),

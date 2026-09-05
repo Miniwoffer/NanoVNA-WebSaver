@@ -98,14 +98,14 @@ export function popover(anchorEl, render, options = {}) {
     /** Rebuild the body in place; a no-op while closed. */
     refresh() {
       if (!open) return;
-      node.replaceChildren(...[render()].flat().filter(Boolean));
+      node.replaceChildren(...[render()].flat(Infinity).filter(Boolean));
       place(node, anchorEl, align);
     },
 
     open() {
       if (open) return;
       closePopover(); // only one at a time
-      node.replaceChildren(...[render()].flat().filter(Boolean));
+      node.replaceChildren(...[render()].flat(Infinity).filter(Boolean));
       document.body.append(node);
       open = true;
       openPopover = handle;

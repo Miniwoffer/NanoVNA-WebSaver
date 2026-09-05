@@ -23,6 +23,7 @@
 import { button, checkbox, el, field, select } from './dom.js';
 import { menuButton, menuHeading, menuRow } from './menu.js';
 import { usbIcon } from './icons.js';
+import { calibrationDialog } from './calibration.js';
 import { serialSupported, serialUnsupportedReason } from '../device/transport.js';
 
 /** Report a failure to the user without stopping the application. */
@@ -39,6 +40,7 @@ function guard(state, action) {
 
 export function deviceMenu(state) {
   let ports = [];
+  const calibration = calibrationDialog(state);
 
   const control = menuButton({
     label: 'Connect',
@@ -80,6 +82,17 @@ export function deviceMenu(state) {
         el('p.muted', {}, 'The browser asks which serial port to share, once per device.'),
       );
     }
+    // reachable without a device: a stored .cal can be loaded and read
+    // back at any time from the advanced tab
+    rows.push(menuHeading('Calibration'));
+    rows.push(
+      menuRow(
+        button('Calibrate…', () => {
+          control.menu.close();
+          calibration.open();
+        }),
+      ),
+    );
     return rows;
   }
 
@@ -155,6 +168,21 @@ export function deviceMenu(state) {
       checkbox('Validate incoming data', device.validateInput, (event) => {
         device.validateInput = event.target.checked;
       }),
+    );
+
+    rows.push(menuHeading('Calibration'));
+    rows.push(
+      menuRow(
+        button('Calibrate…', () => {
+          control.menu.close();
+          calibration.open();
+        }, { variant: 'primary', title: 'Measure the calibration standards' }),
+        el(
+          'span.muted',
+          {},
+          state.calibration.isCalculated ? 'applied' : 'not applied',
+        ),
+      ),
     );
 
     const actions = [];
